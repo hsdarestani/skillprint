@@ -4,6 +4,12 @@
 
 Sprint 0 vertical slice for the `SKILLPRINT LIVE — Entwickler-Pflichtenheft v1.0 (29.10.2026)`. This is a **working demonstrator**, not a validated employment assessment, certified AI system, or product suitable for real candidate information.
 
+## Cloudflare Pages production release access
+
+The Worker deployment and the Pages deployment use **different API permissions**. Worker release uses the existing `CLOUDFLARE_API_TOKEN` (which already works). Production site release requires a separate GitHub Actions secret named `CLOUDFLARE_PAGES_API_TOKEN` with **Account → Cloudflare Pages → Edit**, scoped to the Cloudflare account that owns `skillprint.pages.dev`. This is a free Cloudflare access token, not a paid add-on. Never paste the token into chat, source files, commits or logs.
+
+The workflow `.github/workflows/deploy-pages.yml` will install, test, build the `dist/` bundle and deploy it to the existing `skillprint` Pages project. After creating the secret, rerun the **Deploy SKILLPRINT Pages (Built)** workflow on `main`. Verify `skillprint.pages.dev` serves the Sprint 4 conversation modules. The existing Git-integrated build settings should also remain `npm run build` and `dist`; if the Git integration publishes raw sources again, change its build output settings or disable automatic Git production deployments to avoid competing release sources.
+
 ## Sprint 4 — natural-language arrival and internal phone dialogue
 
 The advanced Hotel Front Desk Studio now supports **three distinct text conversations**: invoice guest Lena Weber, arriving guest Sofia Demir and Housekeeping on the internal phone. Sofia and Housekeeping have separate, event-based conversation histories and consistent fictional scenario facts. The model can respond in **German, Turkish or English**; an explicitly labeled deterministic fallback keeps the demo usable during model outages.
