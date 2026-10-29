@@ -36,23 +36,40 @@ npm run build
 
 ## Enable true cross-device live sessions with Cloudflare
 
-1. Install dependencies and authenticate with Cloudflare: `npm install`, then `npx wrangler login`.
-2. Deploy the separate Worker + SQLite Durable Object:
+The website and the realtime API are **two separate deployments**. A Cloudflare Pages deployment by itself is only the static UI. Cross-device live sessions require the `skillprint-live-api` Worker plus its SQLite-backed Durable Object.
 
-   ```sh
-   npm run api:deploy
-   ```
+### Option A — GitHub Actions (easiest without a terminal)
 
-3. Take the deployed Worker URL (for example `https://skillprint-live-api.<account>.workers.dev`) and replace the empty string in `public/config.js`:
+1. In Cloudflare, find your **Account ID** and create a narrowly scoped API Token using the **Edit Cloudflare Workers** template. **Never paste the API token into code or chat.**
+2. Go to GitHub repository **Settings → Secrets and variables → Actions → New repository secret**. Add these two secrets:
+   - `CLOUDFLARE_ACCOUNT_ID`: Cloudflare Account ID.
+   - `CLOUDFLARE_API_TOKEN`: Cloudflare API Token.
+3. In GitHub **Actions → Deploy SKILLPRINT Realtime API → Run workflow**, choose `main` and run it. Wait for the workflow to succeed.
+4. Open the Worker URL from the workflow's deploy step, which will normally look like `https://skillprint-live-api.<your-subdomain>.workers.dev`. Verify the URL plus `/api/health` returns JSON with `"ok":true`.
+5. In **Cloudflare Pages → skillprint → Settings → Environment variables / Variables and Secrets**, create the **Production build-time** variable:
+   - Name: `VITE_SKILLPRINT_API_BASE`
+   - Value: the exact Worker base URL **without** `/api/health` and without a trailing slash.
+6. **Redeploy your Cloudflare Pages build.** Vite embeds `VITE_*` variables into the built JavaScript. A mere variable change cannot update an already-built site.
+7. Visit the Pages site and confirm the header reads **BACKEND ONLINE**, then create a session and open the candidate link on a **different phone or laptop**. Both devices must use the deployed Pages URL, not a localhost URL.
 
-   ```js
-   window.SKILLPRINT_API_BASE = "https://YOUR-WORKER-URL.workers.dev";
-   ```
+### Option B — Wrangler from a terminal
 
-4. Connect the GitHub repository to Cloudflare Pages, using build command `npm run build` and output directory `dist`. Or deploy the built `dist/` directory manually.
-5. Open the deployed Pages site, create a session, copy the candidate link and open it from another device. The Worker uses REST for actions and WebSocket for live observer updates.
+```sh
+npm install
+npx wrangler login
+npm run api:deploy
+```
 
-*Cloudflare account configuration, API deployment, custom domains and DNS are not performed by this repository commit.* Local mode works without Cloudflare.
+Then complete steps 4–7 above.
+
+### Diagnostics
+
+- **LOKALE VORSCHAU:** no API URL has been embedded in the build; only same-browser tabs can sync.
+- **BACKEND OFFLINE:** the API URL is configured but the Worker health check failed. Verify `/api/health`, deployment and browser network permissions.
+- **BACKEND ONLINE:** the health endpoint responded. This does *not* prove that live WebSocket event delivery, security or full e2e assessment has passed.
+- If the Pages project was deployed using **Direct Upload** rather than GitHub integration, changes to this GitHub repository won't automatically update Pages. Upload a fresh `dist/` build after setting the variable in your local build environment, or connect the project to GitHub.
+
+**Cloudflare limits:** SQLite-backed Durable Objects are available on the Cloudflare Free plan, subject to usage caps. Avoid sharing this publicly as a production hiring tool; the current code has demo-only capability URLs, no full identity service, no tenant isolation and no applicant privacy compliance.
 
 ### Demo script
 
@@ -73,7 +90,8 @@ src/style.css            Premium dark responsive design
 src/engine.js            Shared deterministic scenario / events / rubric rules
 worker/index.js          Cloudflare API + durable session room
 worker/wrangler.toml     SQLite Durable Object binding and migration
-public/config.js         Set Worker URL to enable cross-device mode
+public/config.js         Optional local fallback when the build-time API variable is not set
+.github/workflows/deploy-realtime-api.yml On-demand GitHub Action to deploy the Worker
 tests/engine.test.js     Domain logic and negative-path tests
 docs/ARCHITECTURE.md     Scope, data flow, caveats, roadmap
 ```
