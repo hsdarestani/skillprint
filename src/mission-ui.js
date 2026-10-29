@@ -27,3 +27,12 @@ export function missionDock(events, mode) {
     </button>`).join("")}
   </nav>`;
 }
+
+// Distinguish an action completed by the candidate from one disabled by prerequisites.
+export function invoiceActionStates(state) {
+  return [
+    {type:"verify_identity",label:"Identität prüfen (Demo)",done:state.verified,disabled:state.verified},
+    {type:"open_invoice",label:"Rechnung öffnen",done:state.opened,disabled:state.opened},
+    {type:"compare_items",label:"Positionen vergleichen",done:state.compared,disabled:!state.opened||state.compared},
+  ];
+}
