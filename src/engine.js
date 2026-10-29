@@ -21,6 +21,16 @@ export const RUBRIC = [
 ];
 export const ACTION_LABELS = {
   ask_guest: "Rückfrage an den Gast",
+  checkin_arrival: "Neuer Gast am Empfang",
+  phone_ringing: "Anruf aus dem Housekeeping",
+  welcome_checkin: "Anreisenden Gast begrüßt",
+  verify_checkin: "Anreisebuchung abgeglichen",
+  hold_phone: "Anruf höflich gehalten",
+  ignore_phone: "Anruf ohne Antwort",
+  answer_phone: "Housekeeping Anruf beantwortet",
+  promise_room: "Zimmerbereitschaft ungeprüft versprochen",
+  offer_wait: "Wartebereich und Rückmeldung angeboten",
+  complete_checkin: "Check-in-Fall gelöst",
   candidate_message: "Nachricht an den KI-Gast",
   guest_message: "Antwort des simulierten Gastes",
   verify_identity: "Gastidentität geprüft",
@@ -32,8 +42,40 @@ export const ACTION_LABELS = {
   observer_note: "Beobachternotiz",
   human_review: "Fachlich freigegeben",
 };
-export function newSession(id, at = new Date().toISOString()) {
-  return { id, createdAt: at, status: "running", reviewStatus: "pending", scenarioId: SCENARIO.id, rubricVersion: SCENARIO.version, events: [] };
+export function newSession(id, at = new Date().toISOString(), mode = "classic") {
+  const selected = mode === "multitask" ? "multitask" : "classic";
+  return { id, createdAt: at, mode:selected, status:"running", reviewStatus:"pending", scenarioId:SCENARIO.id, rubricVersion:SCENARIO.version, events:[] };
+}
+export const MULTITASK_FACTS = Object.freeze({
+  checkinGuest: "Sofia Demir", booking: "CK-311",
+  room: "311", roomStatus: "noch nicht freigegeben",
+  incomingCall: "Housekeeping", preferredOutcome: "Wartebereich anbieten und Rückmeldung zusagen",
+});
+export function deriveMultitask(events = []) {
+  const find = type => events.find(e => e.type === type && (e.actor === "candidate" || e.actor === "system"));
+  const has = type => Boolean(find(type));
+  const arrival = find("checkin_arrival"), ringing = find("phone_ringing");
+  const phoneAnswered = has("answer_phone"), waiting = has("offer_wait");
+  return {
+    checkinArrived: Boolean(arrival), phoneRinging: Boolean(ringing),
+    checkinWelcomed:has("welcome_checkin"), checkinVerified:has("verify_checkin"),
+    phoneHeld:has("hold_phone"), phoneIgnored:has("ignore_phone"),
+    phoneAnswered, roomPromised:has("promise_room"),
+    roomWaiting:waiting, checkinResolved:has("complete_checkin"),
+    pending: (Boolean(arrival) && !has("complete_checkin") ? 1 : 0) + (Boolean(ringing) && !phoneAnswered ? 1 : 0),
+  };
+}
+export function evaluateMultitask(events = []) {
+  const s=deriveMultitask(events);
+  const refs = types => events.filter(e=>types.includes(e.type)).map(e=>e.id);
+  const first = type => events.findIndex(e=>e.type===type);
+  const greetedBeforeCall = first("welcome_checkin")!==-1 && (first("answer_phone")===-1 || first("welcome_checkin")<first("answer_phone"));
+  const items=[
+    {id:"checkin",title:"Anreisenden Gast betreuen",weight:40,points:s.checkinResolved && s.checkinVerified && s.roomWaiting && !s.roomPromised ? 2 : s.checkinWelcomed || s.checkinVerified ? 1 : 0,evidence:refs(["checkin_arrival","welcome_checkin","verify_checkin","offer_wait","complete_checkin","promise_room"]),reason:s.roomPromised?"Nicht bestätigte Zimmerbereitschaft zugesagt.":s.checkinResolved?"Gast begrüßt, Buchung geprüft und sichere Zwischenlösung angeboten.":"Check-in noch nicht vollständig und sicher bearbeitet."},
+    {id:"telephone",title:"Housekeeping Kommunikation",weight:30,points:s.phoneAnswered&&!s.phoneIgnored?2:s.phoneAnswered?1:0,evidence:refs(["phone_ringing","hold_phone","ignore_phone","answer_phone"]),reason:s.phoneIgnored?"Anruf zunächst ignoriert.":s.phoneAnswered?"Zimmerstatus durch den Anruf verifiziert.":"Telefonische Rückmeldung fehlt."},
+    {id:"prioritization",title:"Priorisieren und unterbrechen",weight:30,points:s.phoneAnswered&&s.checkinResolved&&!s.roomPromised&&greetedBeforeCall&&!s.phoneIgnored?2:s.phoneAnswered||s.checkinWelcomed?1:0,evidence:refs(["checkin_arrival","phone_ringing","welcome_checkin","hold_phone","ignore_phone","answer_phone","offer_wait","promise_room","complete_checkin"]),reason:s.roomPromised?"Eine unbestätigte Zusage ist ein fachlicher Risikofaktor.":s.phoneAnswered&&s.checkinResolved?"Beide Aufgaben bearbeitet; Reihenfolge anhand der Ereignisse prüfen.":"Unterbrechungen noch nicht vollständig bearbeitet."},
+  ].map(x=>({...x,weighted:x.points/2*x.weight}));
+  return {criteria:items,total:items.reduce((n,x)=>n+x.weighted,0),status:s.checkinResolved&&s.phoneAnswered?"complete":"in_progress",disclaimer:"Illustrative Entscheidungsrubrik; keine validierte Eignungsdiagnostik. Zeitdruck und Priorisierung müssen fachlich geprüft werden."};
 }
 export function deriveState(events = []) {
   const candidate = events.filter(e => e.actor === "candidate");
@@ -57,9 +99,10 @@ export function deriveState(events = []) {
     privacyBreach: Boolean(opened && (!verified || candidate.indexOf(opened) < candidate.indexOf(verified))),
     replyText: reply?.payload?.text || "",
     attempts: candidate.filter(e => e.type === "correct_invoice").length,
+    multitask: deriveMultitask(events),
   };
 }
-export function evaluate(events = []) {
+export function evaluate(events = [], mode = "classic") {
   const state = deriveState(events);
   const candidate = events.filter(e => e.actor === "candidate");
   const relevant = types => candidate.filter(e => types.includes(e.type)).map(e => e.id);
@@ -80,9 +123,11 @@ export function evaluate(events = []) {
     assessed: candidate.length > 0,
     evidenceCount: candidate.length,
     disclaimer: "Demonstrationsrubrik, nicht arbeitspsychologisch validiert. Kein Eignungs- oder Einstellungswahrscheinlichkeitswert. Entscheidung nur durch Menschen.",
+    ...(mode === "multitask" ? {multitask:evaluateMultitask(events)} : {}),
   };
 }
-const CANDIDATE_ACTIONS = new Set(["candidate_message", "ask_guest", "verify_identity", "open_invoice", "compare_items", "correct_invoice", "escalate", "submit_reply"]);
+const MULTITASK_ACTIONS = new Set(["welcome_checkin","verify_checkin","hold_phone","ignore_phone","answer_phone","promise_room","offer_wait","complete_checkin"]);
+const CANDIDATE_ACTIONS = new Set([...MULTITASK_ACTIONS,"candidate_message", "ask_guest", "verify_identity", "open_invoice", "compare_items", "correct_invoice", "escalate", "submit_reply"]);
 export function appendAction(session, action, role, now = new Date().toISOString()) {
   if (!session || !Array.isArray(session.events)) throw new Error("INVALID_SESSION");
   if (!action || typeof action.type !== "string") throw new Error("INVALID_ACTION");
@@ -103,6 +148,18 @@ export function appendAction(session, action, role, now = new Date().toISOString
   }
   if (role === "guest" && current.candidateMessages <= current.guestMessages) throw new Error("NO_CHAT_REQUEST");
   if (role === "candidate" && action.type === "submit_reply" && current.candidateMessages > current.guestMessages) throw new Error("GUEST_REPLY_PENDING");
+  const advanced = session.mode === "multitask";
+  const mt = current.multitask;
+  if (MULTITASK_ACTIONS.has(action.type) && !advanced) throw new Error("ADVANCED_MODE_REQUIRED");
+  if (advanced && action.type === "submit_reply" && (!mt.checkinResolved || !mt.phoneAnswered)) throw new Error("SERVICE_QUEUE_INCOMPLETE");
+  if (action.type === "welcome_checkin" && !mt.checkinArrived) throw new Error("GUEST_NOT_ARRIVED");
+  if (action.type === "verify_checkin" && !mt.checkinWelcomed) throw new Error("WELCOME_GUEST_FIRST");
+  if (["hold_phone","ignore_phone","answer_phone"].includes(action.type) && !mt.phoneRinging) throw new Error("PHONE_NOT_RINGING");
+  if (action.type === "offer_wait" && (!mt.checkinVerified || !mt.phoneAnswered)) throw new Error("CHECK_ROOM_STATUS_FIRST");
+  if (action.type === "complete_checkin" && (!mt.checkinVerified || !mt.roomWaiting || !mt.phoneAnswered)) throw new Error("CHECKIN_NOT_READY");
+  if (action.type === "promise_room" && !mt.checkinArrived) throw new Error("GUEST_NOT_ARRIVED");
+  if (["welcome_checkin","verify_checkin","hold_phone","ignore_phone","answer_phone","promise_room","offer_wait","complete_checkin"].includes(action.type)
+     && session.events.some(e=>e.actor==="candidate" && e.type===action.type)) throw new Error("ACTION_ALREADY_RECORDED");
   if (action.type === "compare_items" && !current.opened) throw new Error("OPEN_INVOICE_FIRST");
   if (action.type === "correct_invoice" && !current.compared) throw new Error("COMPARE_INVOICE_FIRST");
   if (action.type === "submit_reply" && !current.opened) throw new Error("OPEN_INVOICE_FIRST");
@@ -120,5 +177,16 @@ export function appendAction(session, action, role, now = new Date().toISOString
     if (action.type === "candidate_message" || action.type === "guest_message") payload.locale = ["de","tr","en"].includes(action.locale) ? action.locale : "de";
   }
   const event = { id, sequence: session.events.length + 1, at: now, actor: role === "coach" ? "observer" : role === "guest" ? "guest" : "candidate", type: action.type, payload };
-  return { ...session, events: [...session.events, event], status: action.type === "submit_reply" ? "completed" : "running" };
+  const events=[...session.events,event];
+  if (advanced && role === "candidate") {
+    // Scenario interruptions are persisted and replayable, never browser-local timers.
+    const completedSteps = events.filter(e=>e.actor==="candidate" && e.type!=="submit_reply").length;
+    for (const [trigger,type] of [[2,"checkin_arrival"],[4,"phone_ringing"]]) {
+      if(completedSteps>=trigger && !events.some(e=>e.type===type)) {
+        events.push({id:"sys_"+type,sequence:events.length+1,at:now,actor:"system",type,
+          payload:{description:type==="checkin_arrival"?"Sofia Demir wartet mit Buchung CK-311 am Empfang.":"Housekeeping meldet sich zum Zimmerstatus 311."}});
+      }
+    }
+  }
+  return { ...session, events, status: action.type === "submit_reply" ? "completed" : "running" };
 }

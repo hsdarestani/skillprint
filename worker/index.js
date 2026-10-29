@@ -19,12 +19,15 @@ export default {
         const {success} = await env.RATE_CREATE.limit({key:clientKey});
         if (!success) return error("SESSION_RATE_LIMIT",429);
       }
+      let options={};
+      try { options=await request.json(); } catch { /* legacy create requests can have no body */ }
+      const mode=options?.mode==="multitask"?"multitask":"classic";
       const id = "sl-" + crypto.randomUUID().slice(0, 8);
       const tokens = { coachToken: randomToken(), candidateToken: randomToken() };
       const room = env.ROOMS.get(env.ROOMS.idFromName(id));
-      const response = await room.fetch("https://room/init", { method: "POST", body: JSON.stringify({ id, ...tokens }) });
+      const response = await room.fetch("https://room/init", { method: "POST", body: JSON.stringify({ id, mode, ...tokens }) });
       if (!response.ok) return error("Could not create assessment", 500);
-      return json({ id, ...tokens, scenario: SCENARIO.id }, 201);
+      return json({ id, mode, ...tokens, scenario: SCENARIO.id }, 201);
     }
     const match = url.pathname.match(/^\/api\/sessions\/([a-z0-9-]+)\/(snapshot|action|chat|finalize|stream)$/);
     if (!match || !idOK(match[1])) return error("NOT_FOUND", 404);
@@ -56,7 +59,7 @@ export class AssessmentRoom {
       if (await this.ctx.storage.get("session")) return error("ALREADY_INITIALIZED", 409);
       const data = await request.json();
       if (!idOK(data.id) || !/^[a-f0-9]{48}$/.test(data.coachToken) || !/^[a-f0-9]{48}$/.test(data.candidateToken)) return error("INVALID_INIT");
-      await this.ctx.storage.put("session", { ...newSession(data.id), coachToken: data.coachToken, candidateToken: data.candidateToken });
+      await this.ctx.storage.put("session", { ...newSession(data.id, new Date().toISOString(), data.mode), coachToken: data.coachToken, candidateToken: data.candidateToken });
       return json({ ok: true });
     }
     let session = await this.ctx.storage.get("session");
@@ -122,9 +125,9 @@ export class AssessmentRoom {
     return error("NOT_FOUND", 404);
   }
   snapshot(session, role) {
-    const visibleEvents = role === "coach" ? session.events : session.events.filter(e => e.actor === "candidate" || e.actor === "guest");
-    const base = { id: session.id, scenarioId: session.scenarioId, rubricVersion: session.rubricVersion, status: session.status, reviewStatus: session.reviewStatus, events: visibleEvents, state: deriveState(visibleEvents), role };
-    return role === "coach" ? { ...base, report: evaluate(session.events) } : base;
+    const visibleEvents = role === "coach" ? session.events : session.events.filter(e => e.actor === "candidate" || e.actor === "guest" || e.actor === "system");
+    const base = { id: session.id, scenarioId: session.scenarioId, rubricVersion: session.rubricVersion, mode:session.mode||"classic", status: session.status, reviewStatus: session.reviewStatus, events: visibleEvents, state: deriveState(visibleEvents), role };
+    return role === "coach" ? { ...base, report: evaluate(session.events,session.mode) } : base;
   }
   broadcast(session) {
     for (const [socket, role] of this.clients) {

@@ -42,3 +42,7 @@ jobs:
         env:
           SKILLPRINT_LIVE_API: ${{ steps.deploy.outputs.deployment-url }}
         run: node scripts/live-ai-smoke.mjs
+      - name: Verify staged hotel service interruptions and evidence rubrics
+        env:
+          SKILLPRINT_LIVE_API: ${{ steps.deploy.outputs.deployment-url }}
+        run: node scripts/live-multitask-smoke.mjs

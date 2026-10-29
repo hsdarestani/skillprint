@@ -4,6 +4,21 @@
 
 Sprint 0 vertical slice for the `SKILLPRINT LIVE — Entwickler-Pflichtenheft v1.0 (29.10.2026)`. This is a **working demonstrator**, not a validated employment assessment, certified AI system, or product suitable for real candidate information.
 
+## Sprint 2 — Advanced Hotel Front Desk
+
+Choose **Live Multitasking Demo starten** on the dashboard for an advanced session. The classic demo remains available for backward compatibility.
+
+This advanced scenario introduces two **event-triggered interruptions** while the AI guest's invoice complaint is underway:
+
+- After two candidate actions: Sofia Demir arrives with the synthetic booking `CK-311` and requests check-in. The room cannot be promised without confirming availability.
+- After four candidate actions: a housekeeping phone call arrives. Answering it establishes that room 311 **has not been released** and there is no confirmed readiness time.
+- The candidate can greet the guest, verify the booking, place/answer/ignore the call, offer a waiting area and a follow-up, and document the case. Risky choices such as promising an unready room are recorded rather than silently blocked.
+- The original invoice complaint and free-text AI conversation continue in parallel. Submitting the final invoice reply is blocked until both service interruptions have been resolved.
+- **The report contains two independent illustrative score sets**: original five invoice-related criteria and three additional multi-task criteria (check-in, phone handling, prioritization). Every criterion links to actual timestamped events. No model makes employment decisions.
+- Arrivals are triggered by **actions**, not real-world wall-clock timers or a video/audio call. This first iteration demonstrates decision sequencing; it does **not** reproduce live time pressure or perform real check-ins. The phone is an interactive scripted call, not voice telephony.
+
+Live Cloudflare validation: `scripts/live-multitask-smoke.mjs` runs after the Worker deployment using fictional demo events. For a stronger hiring pilot, recruit subject-matter reviewers to validate the scenarios and rubrics, and test the interface on Android, iPad and desktop.
+
 ## Sprint 1 — live multilingual guest conversation
 
 The Hotel Front Office candidate can now ask **free-text questions** in German, Turkish or English. Messages are sent to a Cloudflare Worker Durable Object where a **bounded Workers AI** roleplays fictional hotel guest Lena Weber with fixed invoice facts. Both candidate messages and guest replies become timestamped events visible to the employer and available in the Evidence Report.

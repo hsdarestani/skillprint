@@ -1,5 +1,6 @@
 import { SCENARIO, ACTION_LABELS, appendAction, newSession, deriveState, evaluate } from "./engine.js";
 import { OPENING, fallbackGuest, normalizeLocale } from "./guest.js";
+import { multitaskBanner, multitaskWorkspace, multitaskControl, multitaskReport } from "./multitask-ui.js";
 
 const root = document.getElementById("app");
 // The deployed, healthy demo Worker URL is set in public/config.js; it is a safe
@@ -39,20 +40,20 @@ function localSnapshot(id, token) {
   const role = token === entry.coachToken ? "coach" : token === entry.candidateToken ? "candidate" : null;
   if (!role) throw Error("Sitzungslink ist ungültig.");
   const s = entry.session;
-  const events = role === "coach" ? s.events : s.events.filter(e => e.actor === "candidate" || e.actor === "guest");
-  const base = { id, scenarioId:s.scenarioId, rubricVersion:s.rubricVersion, status:s.status, reviewStatus:s.reviewStatus, role, events, state:deriveState(events) };
-  return role === "coach" ? { ...base, report:evaluate(s.events) } : base;
+  const events = role === "coach" ? s.events : s.events.filter(e => e.actor === "candidate" || e.actor === "guest" || e.actor === "system");
+  const base = { id, scenarioId:s.scenarioId, rubricVersion:s.rubricVersion, mode:s.mode||"classic", status:s.status, reviewStatus:s.reviewStatus, role, events, state:deriveState(events) };
+  return role === "coach" ? { ...base, report:evaluate(s.events,s.mode) } : base;
 }
-async function startSession() {
+async function startSession(mode = "classic") {
   let data;
   if (REMOTE) {
-    const response = await fetch(API + "/api/sessions", { method:"POST" });
+    const response = await fetch(API + "/api/sessions", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({mode}) });
     if (!response.ok) throw Error("Die Sitzung konnte nicht erstellt werden.");
     data = await response.json();
   } else {
     const id = "sl-" + crypto.randomUUID().slice(0,8);
-    data = { id, coachToken:randomToken(), candidateToken:randomToken() };
-    localStorage.setItem(STORE + id, JSON.stringify({ ...data, session:newSession(id) }));
+    data = { id, mode, coachToken:randomToken(), candidateToken:randomToken() };
+    localStorage.setItem(STORE + id, JSON.stringify({ ...data, session:newSession(id,new Date().toISOString(),mode) }));
   }
   active = data;
   sessionStorage.setItem(DETAILS, JSON.stringify(active));
@@ -192,7 +193,7 @@ function dashboard() {
       <div class="eyebrow accent"><span class="pulse-dot"></span> THE FUTURE OF PRACTICAL ASSESSMENT</div>
       <h1>Arbeit sichtbar machen.<br><em>Potenzial belegbar prüfen.</em></h1>
       <p>Keine Bauchgefühl-Interviews. Sondern realistische Arbeitsproben, ein synchroner Beobachtungsraum und jede Aussage verknüpft mit dem tatsächlichen Arbeitsschritt.</p>
-      <div class="hero-actions"><button class="primary" data-action="create">${icon("play")} Neue Demo-Sitzung starten</button><a class="ghost-btn" href="#workflows">Das Konzept entdecken ${icon("arrow")}</a></div>
+      <div class="hero-actions"><button class="primary" data-action="create-advanced">${icon("play")} Live Multitasking Demo starten</button><button class="ghost-btn" data-action="create">Klassische Demo</button><a class="ghost-btn" href="#workflows">Das Konzept entdecken ${icon("arrow")}</a></div>
       <div class="hero-proof"><span>◉ LIVE EVENT STREAM</span><span>✧ EVIDENCE LINKED</span><span>⌑ HUMAN IN CONTROL</span></div>
     </div><div class="hero-illustration" aria-hidden="true"><div class="simulation-head"><span>SKILLPRINT / LIVE SESSION</span><span class="live-chip">● LIVE</span></div><div class="simulation-body"><div class="sim-line long"></div><div class="sim-line"></div><div class="sim-card"><div class="sim-dot"></div><span>IDENTITY CHECK</span><b>VERIFIED</b></div><div class="sim-card"><div class="sim-dot"></div><span>INVOICE REVIEW</span><b>220.00 EUR</b></div><div class="sim-card active"><div class="sim-dot"></div><span>EVIDENCE STREAM</span><b>CONNECTED</b></div><div class="sim-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
     </div>
@@ -203,7 +204,7 @@ function dashboard() {
       <article class="feature-card"><div class="feature-index">02 / OBSERVE</div><div class="feature-icon">◎</div><h3>Live Control Room</h3><p>Strukturierte Aktionen erscheinen nahezu in Echtzeit bei autorisierten Beobachtern, ohne private Geräteinhalte.</p><span>Event-basierte Synchronisation</span></article>
       <article class="feature-card"><div class="feature-index">03 / PROVE</div><div class="feature-icon">≋</div><h3>Evidence Replay</h3><p>Jede Rubrik-Aussage springt zu den relevanten Ereignissen. Fehlende Belege bleiben ausdrücklich sichtbar.</p><span>Menschliche Freigabe nötig</span></article>
     </div>
-    <div class="demo-brief"><div><p class="eyebrow accent">FIRST VERTICAL SLICE</p><h2>Ein Gast. Eine fehlerhafte Rechnung.<br><em>Viele beobachtbare Entscheidungen.</em></h2><p>Ein realitätsnaher Demonstrator aus dem Pflichtenheft: Identität prüfen, doppelt berechnetes Frühstück entdecken, Rechnung korrigieren und die Antwort dokumentieren.</p><button class="primary" data-action="create">Scenario 01 starten ${icon("arrow")}</button></div><div class="brief-panel"><span>ASSESSMENT BRIEF</span><h3>Front Office Agent</h3><div class="brief-row"><small>SCENARIO</small><b>Invoice discrepancy</b></div><div class="brief-row"><small>RUBRIC</small><b>5 Kriterien / 100 Punkte</b></div><div class="brief-row"><small>MODALITY</small><b>Browser · Tablet</b></div><div class="brief-row"><small>STATUS</small><b>Illustrative Demo</b></div></div></div>
+    <div class="demo-brief"><div><p class="eyebrow accent">FIRST VERTICAL SLICE</p><h2>Ein Gast. Eine fehlerhafte Rechnung.<br><em>Viele beobachtbare Entscheidungen.</em></h2><p>Ein realitätsnaher Demonstrator aus dem Pflichtenheft: Identität prüfen, doppelt berechnetes Frühstück entdecken, Rechnung korrigieren und die Antwort dokumentieren.</p><button class="primary" data-action="create-advanced">Multitask Simulation starten ${icon("arrow")}</button></div><div class="brief-panel"><span>ASSESSMENT BRIEF</span><h3>Front Office Agent</h3><div class="brief-row"><small>SCENARIO</small><b>Invoice discrepancy</b></div><div class="brief-row"><small>RUBRIC</small><b>5 Kriterien / 100 Punkte</b></div><div class="brief-row"><small>MODALITY</small><b>Browser · Tablet</b></div><div class="brief-row"><small>STATUS</small><b>Illustrative Demo</b></div></div></div>
   </div>`;
 }
 function guestMessage(state) {
@@ -250,12 +251,14 @@ function candidateView() {
   return `<div class="candidate-page">
     <div class="page-heading"><div><p class="eyebrow">ASSESSMENT / FRONT OFFICE AGENT</p><h1>Ihr praktischer Arbeitstest</h1><p>Ein simuliertes Gästegespräch mit einer fehlerhaften Rechnung. Arbeiten Sie so, wie Sie es im Hotel tun würden.</p></div>${tag(snapshot.status==="completed"?"ABSCHLOSS ERFOLGT":"SIMULATION LÄUFT",snapshot.status==="completed"?"connected":"live")}</div>
     <div class="candidate-progress"><div class="progress-top"><b>Fortschritt</b><span>${done} / 6 Schritte</span></div><div class="progress-track"><span style="width:${done/6*100}%"></span></div></div>
+    ${snapshot.mode==="multitask"?multitaskBanner(s):""}
     <div class="candidate-grid">
       <div class="candidate-main">
         <section class="panel client-conversation"><div class="panel-top"><div><p class="eyebrow">01 / GÄSTEKONTAKT</p><h2>Nachricht von Lena Weber</h2></div><span class="avatar">LW</span></div>
           ${guestChatPanel(snapshot.events,s)}
           <div class="action-grid">${actions.map(a=>`<button class="action-tile ${a.disabled?"is-done":""}" data-step="${a.type}" ${a.disabled?"disabled":""}><span>${a.disabled?"✓":"＋"}</span>${a.label}</button>`).join("")}</div>
         </section>
+        ${snapshot.mode==="multitask"?multitaskWorkspace(s):""}
         <section class="panel"><div class="panel-top"><div><p class="eyebrow">02 / RECHNUNG</p><h2>Rechnungsprüfung</h2></div>${tag(s.corrected?"KORRIGIERT":s.opened?"IN BEARBEITUNG":"GESCHÜTZT",s.corrected?"connected":"muted")}</div>
           ${s.opened ? `<div class="invoice"><div class="invoice-top"><b>HOTEL AURORA</b><span>RECHNUNG / ${SCENARIO.booking}</span></div><div class="invoice-row"><span>Übernachtung</span><b>180,00 €</b></div><div class="invoice-row"><span>Frühstück</span><b>20,00 €</b></div><div class="invoice-row ${s.compared?"flagged":""}"><span>Frühstück (erneut)</span><b>20,00 €</b></div><div class="invoice-row"><span>Servicepauschale</span><b>20,00 €</b></div><div class="invoice-total"><span>Rechnungsbetrag ${s.corrected?"(korrigiert)":""}</span><strong>${euro(s.corrected?SCENARIO.correct:SCENARIO.billed)}</strong></div></div>` : `<div class="locked"><div class="locked-icon">⌑</div><h3>Rechnung noch geschlossen</h3><p>Prüfen Sie zuerst die Identität, bevor Sie personenbezogene Rechnungsdaten ansehen. Die Demo protokolliert auch abweichende Entscheidungen.</p></div>`}
           <div class="input-row"><label for="amount">Korrigierten Gesamtbetrag eingeben</label><div class="amount-line"><input id="amount" type="number" step="0.01" min="0" placeholder="z. B. 220.00" ${!s.compared||s.replied?"disabled":""}/><button class="secondary" data-step="correct_invoice" ${!s.compared||s.replied?"disabled":""}>Korrektur speichern</button></div><small>Nur die fachlich korrekte Änderung wird in der Rubrik berücksichtigt.</small></div>
@@ -269,8 +272,8 @@ function candidateView() {
   </div>`;
 }
 function eventLine(e, interactive = false) {
-  const actor = e.actor === "candidate" ? "KANDIDAT" : e.actor === "guest" ? "KI-GAST" : "BEOBACHTER";
-  const detail = e.type === "correct_invoice" ? " · " + euro(e.payload.amount) : e.payload?.text ? " · " + safe(e.payload.text.slice(0,120)) : "";
+  const actor = e.actor === "candidate" ? "KANDIDAT" : e.actor === "guest" ? "KI-GAST" : e.actor === "system" ? "SITUATION" : "BEOBACHTER";
+  const detail = e.type === "correct_invoice" ? " · " + euro(e.payload.amount) : e.payload?.text ? " · " + safe(e.payload.text.slice(0,120)) : e.payload?.description ? " · " + safe(e.payload.description) : "";
   return `<${interactive?"button":"div"} class="timeline-event ${chosenEvidence===e.id?"highlight":""}" ${interactive?'data-evidence="'+safe(e.id)+'"':""}><span class="timeline-marker"></span><span class="event-time">${fmt(e.at)}</span><span class="event-label"><b>${safe(ACTION_LABELS[e.type] || e.type)}</b><small>${actor}${detail}</small></span></${interactive?"button":"div"}>`;
 }
 function mirror(s) {
@@ -288,6 +291,7 @@ function control() {
     <div class="control-grid"><section class="panel primary-panel"><div class="panel-top"><div><p class="eyebrow">A / SYNCHRONISIERTE TESTANSICHT</p><h2>Candidate workspace</h2></div><span class="stream-indicator"><i></i> ${REMOTE?"REMOTE STREAM":"LOCAL EVENT MIRROR"}</span></div>${mirror(s)}</section>
       <aside class="panel evidence-panel"><div class="panel-top"><div><p class="eyebrow">B / LIVE EVENT STREAM</p><h2>Timeline</h2></div><span class="event-counter">${snapshot.events.length} EVENTS</span></div><div class="event-list">${snapshot.events.length?snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join(""):`<div class="empty-events"><div>◎</div><b>Warten auf die erste Aktion</b><p>Öffnen Sie den Kandidatenlink auf einem zweiten Gerät und starten Sie den Test.</p></div>`}</div></aside>
     </div>
+    ${report.multitask?multitaskControl(s,report.multitask):""}
     <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><p class="eyebrow">C / TRANSPARENTE BEWERTUNG</p><h2>Kompetenzmatrix</h2></div><a class="inline-link" href="${href("report",snapshot.id,tokenFor(current()))}">Vollständiger Bericht ${icon("arrow")}</a></div><div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div><p class="subtle-note">Illustrative Rubrik. Die fachliche Aussage ist noch nicht validiert.</p></section>
       <section class="panel note-panel"><div class="panel-top"><div><p class="eyebrow">D / BEOBACHTER-PROTOKOLL</p><h2>Beobachtung notieren</h2></div></div><label class="field-label" for="observer-note">Nur konkrete Handlungen, keine Persönlichkeitsdiagnosen</label><textarea id="observer-note" placeholder="Zum Beispiel: Der Kandidat prüfte zunächst die Buchungsnummer ..." rows="3"></textarea><button class="secondary" data-action="note">Notiz mit Zeitstempel sichern ${icon("arrow")}</button></section></div>
     <div class="bottom-cta"><div><p class="eyebrow accent">NEXT / EVIDENCE REPLAY</p><h2>Vom Score zurück zum Beleg.</h2></div><a class="primary" href="${href("report",snapshot.id,tokenFor(current()))}">Evidence Report öffnen ${icon("arrow")}</a></div>
@@ -302,6 +306,7 @@ function reportView() {
     <div class="report-hero"><div><p class="eyebrow">BEOBACHTETE LEISTUNG / DEMO</p><div class="score-number">${report.total}<span> / 100</span></div><p>Gewichteter Aufgabenwert, keine Eignungswahrscheinlichkeit.</p></div><div class="report-status"><div class="status-ribbon"><span>REPORT STATUS</span>${tag(snapshot.reviewStatus==="approved"?"HUMAN REVIEWED":"HUMAN REVIEW REQUIRED",snapshot.reviewStatus==="approved"?"connected":"gold")}</div><div class="status-ribbon"><span>JOB FAMILY</span><strong>HOTEL FRONT OFFICE</strong></div><div class="status-ribbon"><span>RUBRIC VERSION</span><strong>${safe(snapshot.rubricVersion)}</strong></div><div class="status-ribbon"><span>EVIDENCE EVENTS</span><strong>${report.evidenceCount}</strong></div></div></div>
     <div class="report-grid"><section class="panel"><div class="panel-top"><div><p class="eyebrow">01 / BEWERTUNGSMATRIX</p><h2>Kriterien mit Belegverknüpfung</h2></div></div><div class="criterion-list">${report.criteria.map(c=>`<article class="criterion"><div class="criterion-header"><div><h3>${safe(c.title)}</h3><span>GEWICHT ${c.weight}%</span></div><strong>${c.points} / 2</strong></div><p>${safe(c.reason)}</p><div class="criterion-footer"><span>${c.weighted} gewichtete Punkte</span>${c.evidence.length?`<button class="evidence-link" data-evidence="${safe(c.evidence[0])}">${icon("link")} Beleg öffnen · ${c.evidence.length} Ereignis(se)</button>`:"<span class='no-evidence'>Nicht beurteilbar / kein Beleg</span>"}</div></article>`).join("")}</div></section>
     <aside class="panel report-timeline"><div class="panel-top"><div><p class="eyebrow">02 / REPLAY INDEX</p><h2>Zeitgestempelte Handlungen</h2></div></div><div class="event-list">${snapshot.events.length?snapshot.events.map(e=>eventLine(e,true)).join(""):"<p>Keine Ereignisse vorhanden.</p>"}</div>${selected?`<div class="evidence-detail"><p class="eyebrow accent">AUSGEWÄHLTER BELEG</p><h3>${safe(ACTION_LABELS[selected.type]||selected.type)}</h3><p>${fmt(selected.at)} · ${safe(selected.actor)} · Event #${selected.sequence}</p><pre>${safe(JSON.stringify(selected.payload,null,2))}</pre></div>`:"<div class='evidence-detail placeholder'>Klicken Sie auf einen Rubrik-Beleg oder einen Timeline-Eintrag, um die Originalaktion zu sehen.</div>"}</aside></div>
+    ${report.multitask?multitaskReport(report.multitask):""}
     <div class="warning-banner">${icon("shield")}<p><b>Verantwortungsvolle Bewertung.</b> Kein Emotion-Scoring, keine automatisierte Einstellung oder Ablehnung, kein Zugriff auf private Apps und keine Aussage über allgemeine Intelligenz oder Persönlichkeit. Fachliche Validierung, Datenschutzprüfung und echte Nutzerabnahme stehen noch aus.</p></div>
   </div>`;
 }
@@ -339,7 +344,7 @@ async function onClick(event) {
   const r = current();
   try {
     notification = "";
-    if (action === "create") { element.disabled = true; await startSession(); return; }
+    if (action === "create" || action === "create-advanced") { element.disabled = true; await startSession(action==="create-advanced"?"multitask":"classic"); return; }
     if (action === "chat") {
       await sendGuestChat(r,document.getElementById("guest-chat")?.value || "");return;
     }
