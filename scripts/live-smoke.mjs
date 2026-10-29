@@ -38,6 +38,28 @@ function waitSnapshot(socket, check, ms = 15000) {
 }
 const pathFor = (id, route, token) => "/api/sessions/" + encodeURIComponent(id) + "/" + route + "?token=" + encodeURIComponent(token);
 
+
+// Verify the ACTUAL deployed Pages HTML and its frontend assets, not the GitHub build.
+const site = "https://skillprint.pages.dev/";
+const siteResponse = await fetch(site, { signal: AbortSignal.timeout(20000) });
+assert.equal(siteResponse.status, 200, "Published Pages HTML is unavailable");
+const html = await siteResponse.text();
+assert.ok(/SKILLPRINT/i.test(html) && /id=["']app["']/.test(html), "Published HTML does not contain our SPA entry point");
+const scripts = [...html.matchAll(/<script\b[^>]*\btype=["']module["'][^>]*\bsrc=["']([^"']+)["']/gi)];
+assert.ok(scripts.length >= 1, "No application JavaScript entrypoint in deployed HTML");
+const mainURL = new URL(scripts.at(-1)[1], site);
+const scriptResponse = await fetch(mainURL, { signal: AbortSignal.timeout(20000) });
+assert.equal(scriptResponse.status, 200, "Deployed main JS returned a non-success response");
+assert.match(scriptResponse.headers.get("content-type") || "", /javascript/i, "Main JS URL returned a non-JavaScript MIME type, likely an SPA HTML fallback");
+const scriptBody = await scriptResponse.text();
+assert.ok(scriptBody.length > 100, "Deployed main JS is unexpectedly empty");
+const styles = [...html.matchAll(/<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+)["']/gi)];
+assert.ok(styles.length >= 1, "No deployed stylesheet entrypoint");
+const styleResponse = await fetch(new URL(styles.at(-1)[1], site), { signal: AbortSignal.timeout(20000) });
+assert.equal(styleResponse.status, 200, "Stylesheet cannot be fetched");
+assert.match(styleResponse.headers.get("content-type") || "", /css/i, "Stylesheet URL returned a non-CSS MIME type");
+console.log("PASS: live Pages HTML, JavaScript and CSS assets all reachable", mainURL.pathname);
+
 console.log("Checking published SKILLPRINT backend:", BASE);
 const health = await request("/api/health");
 assert.equal(health.status, 200, "Health endpoint is not accessible");
