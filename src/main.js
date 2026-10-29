@@ -419,12 +419,12 @@ root.addEventListener("keydown",e=>{
   const tab=e.target?.closest?.(".fd-tab");
   if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
     e.preventDefault();
+    const origin=tab.closest(".fd-mobile-tabs")?".fd-mobile-tabs":".fd-desktop-tabs";
     const order=["guest","arrival","phone","invoice","handover"];
     const index=order.indexOf(studioTab);
     studioTab=order[(index+(e.key==="ArrowLeft"||e.key==="ArrowUp"?-1:1)+order.length)%order.length];
     draw();
-    const target=root.querySelector(".fd-mobile-tabs .fd-tab.fd-tab-active")||root.querySelector(".fd-desktop-tabs .fd-tab.fd-tab-active");
-    target?.focus();
+    root.querySelector(origin+" .fd-tab.fd-tab-active")?.focus();
     return;
   }
   if(e.target?.id==="guest-chat" && e.key==="Enter" && !e.shiftKey && !e.isComposing){
