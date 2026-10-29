@@ -159,11 +159,13 @@ async function sendServiceChat(r, serviceChannel, value) {
       if(!entry || entry.candidateToken!==tokenFor(r)) throw Error("UNAUTHORIZED");
       entry.session=appendAction(entry.session,{id,type:"service_message",text,channel:serviceChannel,locale:guestLocale},"candidate");
       const reply=scriptedServiceResponse(serviceChannel,guestLocale,deriveState(entry.session.events));
-      entry.session=appendAction(entry.session,{id:"service_"+id,type:"service_reply",text:reply,channel,locale:guestLocale,source:"scripted"},"service");
+      entry.session=appendAction(entry.session,{id:"service_"+id,type:"service_reply",text:reply,channel:serviceChannel,locale:guestLocale,source:"scripted"},"service");
       localStorage.setItem(STORE+r.id,JSON.stringify(entry));
       channel?.postMessage({id:r.id});
       snapshot=localSnapshot(r.id,tokenFor(r));
     }
+    const field=document.getElementById("service-chat-"+serviceChannel);
+    if(field)field.value="";
     studioDrafts["service-chat-"+serviceChannel]="";
   } finally {
     serviceBusy=false;
