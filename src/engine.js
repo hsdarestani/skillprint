@@ -102,6 +102,35 @@ export function deriveState(events = []) {
     multitask: deriveMultitask(events),
   };
 }
+// Progress is a navigation aid, not a validated candidate competency score.
+// Optional actions (hold, escalate, risk choice) do not artificially change completion.
+export function journeyProgress(events = [], mode = "classic") {
+  const state = deriveState(events);
+  const invoiceKeys = ["asked","verified","opened","compared","corrected","replied"];
+  const arrived = ["checkinWelcomed","checkinVerified","roomWaiting","checkinResolved"];
+  const invoiceDone = invoiceKeys.filter(key => state[key]).length;
+  const multi = state.multitask;
+  const checkinDone = arrived.filter(key => multi[key]).length;
+  const phoneDone = Number(multi.phoneAnswered);
+  const advanced = mode === "multitask";
+  const segments = [
+    {id:"guest-contact",key:"guest",label:"Gast",done:Number(state.asked),total:1},
+    {id:"invoice-work",key:"invoice",label:"Rechnung",done:invoiceDone,total:6},
+    ...(advanced ? [
+      {id:"checkin-task",key:"checkin",label:"Check-in",done:checkinDone,total:4,active:multi.checkinArrived && !multi.checkinResolved},
+      {id:"phone-task",key:"phone",label:"Telefon",done:phoneDone,total:1,active:multi.phoneRinging && !multi.phoneAnswered},
+    ] : []),
+  ];
+  const total = advanced ? 11 : 6;
+  const done = invoiceDone + (advanced ? checkinDone + phoneDone : 0);
+  return {
+    done,total,
+    percentage:Math.round(done/total*100),
+    segments,
+    pendingInterruptions:advanced ? multi.pending : 0,
+    completed:done === total,
+  };
+}
 export function evaluate(events = [], mode = "classic") {
   const state = deriveState(events);
   const candidate = events.filter(e => e.actor === "candidate");
