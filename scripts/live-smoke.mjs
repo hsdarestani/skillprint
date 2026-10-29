@@ -64,6 +64,10 @@ const hasOldButton = scriptBody.includes("Neue Demo-Sitzung starten");
 console.log("DEPLOYED FRONTEND:",JSON.stringify({asset:mainURL.pathname,hasMultitask,hasOldButton,bytes:scriptBody.length}));
 assert.ok(hasMultitask, "STALE CLOUDFLARE PAGES DEPLOYMENT: live JS does NOT include Sprint 2 button. Redeploy latest main with build command npm run build and output dist.");
 console.log("PASS: deployed frontend includes Sprint 2 Multitasking UI");
+const hasFrontDeskStudio = scriptBody.includes("fd-cockpit") && scriptBody.includes("Ihr Arbeitsplatz.");
+console.log("FRONT DESK RELEASE:",JSON.stringify({hasFrontDeskStudio,main:mainURL.pathname}));
+assert.ok(hasFrontDeskStudio, "Cloudflare Pages still serves an older frontend without Sprint 3 Front Desk Studio.");
+console.log("PASS: public website serves the new integrated Front Desk Studio");
 
 
 console.log("Checking published SKILLPRINT backend:", BASE);
