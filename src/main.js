@@ -40,7 +40,7 @@ function localSnapshot(id, token) {
   const role = token === entry.coachToken ? "coach" : token === entry.candidateToken ? "candidate" : null;
   if (!role) throw Error("Sitzungslink ist ungültig.");
   const s = entry.session;
-  const events = role === "coach" ? s.events : s.events.filter(e => e.actor === "candidate" || e.actor === "guest");
+  const events = role === "coach" ? s.events : s.events.filter(e => e.actor === "candidate" || e.actor === "guest" || e.actor === "system");
   const base = { id, scenarioId:s.scenarioId, rubricVersion:s.rubricVersion, mode:s.mode||"classic", status:s.status, reviewStatus:s.reviewStatus, role, events, state:deriveState(events) };
   return role === "coach" ? { ...base, report:evaluate(s.events,s.mode) } : base;
 }
