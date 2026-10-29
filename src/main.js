@@ -467,6 +467,47 @@ async function onClick(event) {
     }
   } catch (e) { notification = e.message || "Aktion fehlgeschlagen"; draw(); }
 }
+
+// Pointer Events are supported by iPad Pencil, touchscreens and desktop mice.
+// Capture each completed stroke as a bounded, normalized evidence event.
+function inkPoint(svg,event) {
+  const rect=svg.getBoundingClientRect();
+  if(!rect.width||!rect.height)return null;
+  return [Math.round(Math.min(1,Math.max(0,(event.clientX-rect.left)/rect.width))*10000)/10000,
+          Math.round(Math.min(1,Math.max(0,(event.clientY-rect.top)/rect.height))*10000)/10000];
+}
+root.addEventListener("pointerdown",event=>{
+  const svg=event.target.closest?.("#lab-ink");
+  if(!svg||activeStroke||event.button>0||snapshot?.role!=="candidate"||snapshot?.status==="completed")return;
+  const point=inkPoint(svg,event);
+  if(!point)return;
+  event.preventDefault();
+  const line=document.createElementNS("http://www.w3.org/2000/svg","polyline");
+  line.setAttribute("fill","none");line.setAttribute("stroke","#c55745");
+  line.setAttribute("stroke-width","4");line.setAttribute("stroke-linecap","round");line.setAttribute("stroke-linejoin","round");
+  svg.querySelector("#lab-current-stroke")?.appendChild(line);
+  activeStroke={id:event.pointerId,svg,line,points:[point]};
+  svg.setPointerCapture(event.pointerId);
+});
+root.addEventListener("pointermove",event=>{
+  if(!activeStroke||event.pointerId!==activeStroke.id)return;
+  const point=inkPoint(activeStroke.svg,event);
+  const last=activeStroke.points.at(-1);
+  if(!point||Math.hypot(point[0]-last[0],point[1]-last[1])<0.004)return;
+  if(activeStroke.points.length<100)activeStroke.points.push(point);
+  activeStroke.line.setAttribute("points",activeStroke.points.map(p=>(p[0]*720)+","+(p[1]*360)).join(" "));
+});
+async function finishInk(event,cancel=false) {
+  if(!activeStroke||event.pointerId!==activeStroke.id)return;
+  const drawing=activeStroke;activeStroke=null;
+  try {if(drawing.svg.hasPointerCapture(event.pointerId))drawing.svg.releasePointerCapture(event.pointerId);}catch{}
+  if(cancel||drawing.points.length<2){drawing.line.remove();return;}
+  try {
+    await sendAction(current(),{id:crypto.randomUUID(),type:"drawing_stroke",points:drawing.points});
+  } catch(e){drawing.line.remove();notification=e.message||"Zeichnung konnte nicht gespeichert werden";draw();}
+}
+root.addEventListener("pointerup",event=>{void finishInk(event);});
+root.addEventListener("pointercancel",event=>{void finishInk(event,true);});
 root.addEventListener("click",onClick);
 root.addEventListener("input",e=>{
   if(e.target?.id==="replay-range") {
