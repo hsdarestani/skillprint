@@ -81,11 +81,14 @@ const CANDIDATE_ACTIONS = new Set(["ask_guest", "verify_identity", "open_invoice
 export function appendAction(session, action, role, now = new Date().toISOString()) {
   if (!session || !Array.isArray(session.events)) throw new Error("INVALID_SESSION");
   if (!action || typeof action.type !== "string") throw new Error("INVALID_ACTION");
-  if (session.reviewStatus === "approved") throw new Error("SESSION_FINALIZED");
-  if (session.events.length >= 250) throw new Error("EVENT_LIMIT");
   if (role === "candidate" && !CANDIDATE_ACTIONS.has(action.type)) throw new Error("FORBIDDEN");
   if (role === "coach" && action.type !== "observer_note") throw new Error("FORBIDDEN");
   if (role !== "candidate" && role !== "coach") throw new Error("FORBIDDEN");
+  // Retry of an already-committed action must succeed, even after completion or approval.
+  const id = typeof action.id === "string" && /^[a-zA-Z0-9_-]{8,80}$/.test(action.id) ? action.id : crypto.randomUUID();
+  if (session.events.some(e => e.id === id)) return session;
+  if (session.reviewStatus === "approved") throw new Error("SESSION_FINALIZED");
+  if (session.events.length >= 250) throw new Error("EVENT_LIMIT");
   const current = deriveState(session.events);
   if (role === "candidate" && current.replied) throw new Error("ASSESSMENT_COMPLETED");
   if (action.type === "compare_items" && !current.opened) throw new Error("OPEN_INVOICE_FIRST");
@@ -102,8 +105,6 @@ export function appendAction(session, action, role, now = new Date().toISOString
     if (val.length < 8 || val.length > 800) throw new Error("INVALID_TEXT");
     payload.text = val;
   }
-  const id = typeof action.id === "string" && /^[a-zA-Z0-9_-]{8,80}$/.test(action.id) ? action.id : crypto.randomUUID();
-  if (session.events.some(e => e.id === id)) return session; // idempotent write
   const event = { id, sequence: session.events.length + 1, at: now, actor: role === "coach" ? "observer" : "candidate", type: action.type, payload };
   return { ...session, events: [...session.events, event], status: action.type === "submit_reply" ? "completed" : "running" };
 }
