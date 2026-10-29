@@ -59,6 +59,12 @@ const styleResponse = await fetch(new URL(styles.at(-1)[1], site), { signal: Abo
 assert.equal(styleResponse.status, 200, "Stylesheet cannot be fetched");
 assert.match(styleResponse.headers.get("content-type") || "", /css/i, "Stylesheet URL returned a non-CSS MIME type");
 console.log("PASS: live Pages HTML, JavaScript and CSS assets all reachable", mainURL.pathname);
+const hasMultitask = scriptBody.includes("Live Multitasking Demo starten");
+const hasOldButton = scriptBody.includes("Neue Demo-Sitzung starten");
+console.log("DEPLOYED FRONTEND:",JSON.stringify({asset:mainURL.pathname,hasMultitask,hasOldButton,bytes:scriptBody.length}));
+assert.ok(hasMultitask, "STALE CLOUDFLARE PAGES DEPLOYMENT: live JS does NOT include Sprint 2 button. Redeploy latest main with build command npm run build and output dist.");
+console.log("PASS: deployed frontend includes Sprint 2 Multitasking UI");
+
 
 console.log("Checking published SKILLPRINT backend:", BASE);
 const health = await request("/api/health");

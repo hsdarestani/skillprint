@@ -185,7 +185,7 @@ function sidebar(r) {
   const report = active?.id && active?.coachToken ? href("report",active.id,active.coachToken) : "#/dashboard";
   return `<aside class="sidebar"><p class="eyebrow">WORKSPACE / 01</p><a class="nav-item ${selected==="dashboard"?"chosen":""}" href="#/dashboard"><span class="nav-glyph">◫</span> Übersicht</a><a class="nav-item ${selected==="control"?"chosen":""}" href="${coach}"><span class="nav-glyph">◉</span> Live Control Room</a><a class="nav-item ${selected==="report"?"chosen":""}" href="${report}"><span class="nav-glyph">▤</span> Evidence Report</a><div class="sidebar-bottom"><span class="tiny-orbit">✳</span><p>Evidence over intuition.</p><small>ENGINE / HOTEL V1.2</small></div></aside>`;
 }
-function footer() { return `<footer class="footer"><span>SKILLPRINT LIVE <i>·</i> SPRINT 0</span><span>DEMONSTRATOR · Keine echten Bewerberdaten</span><span>© 2026</span></footer>`; }
+function footer() { return `<footer class="footer"><span>SKILLPRINT LIVE <i>·</i> SPRINT 2 · MULTITASK</span><span>DEMONSTRATOR · Keine echten Bewerberdaten</span><span>© 2026</span></footer>`; }
 function dashboard() {
   const inProgress = active?.id;
   return `<div class="dashboard">
