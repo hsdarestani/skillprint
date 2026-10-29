@@ -1,6 +1,7 @@
 
 import { SCENARIO, ACTION_LABELS, journeyProgress } from "./engine.js";
 import { renderServiceChat } from "./service-ui.js";
+import { renderDrawingPanel,renderLearningPanel } from "./evidence-lab.js";
 
 // A presentation layer only. All decisions still use the existing role-protected,
 // ordered event ledger and human-reviewed rubric; no new synthetic achievements.
@@ -9,6 +10,7 @@ const TABS = [
   {id:"arrival",label:"Check-in",icon:"▣"},
   {id:"phone",label:"Telefon",icon:"⌁"},
   {id:"invoice",label:"Rechnung",icon:"▤"},
+  {id:"learning",label:"Lernen",icon:"◈"},
   {id:"handover",label:"Abschluss",icon:"✓"},
 ];
 export const STUDIO_TABS = TABS.map(x=>x.id);
@@ -22,6 +24,7 @@ export function studioTabSignals(state) {
     arrival:{done:m.checkinResolved,urgent:m.checkinArrived&&!m.checkinResolved},
     phone:{done:m.phoneAnswered,urgent:m.phoneRinging&&!m.phoneAnswered},
     invoice:{done:state.corrected,urgent:false},
+    learning:{done:state.learning.completed,urgent:false},
     handover:{done:state.replied,urgent:false},
   };
 }
@@ -81,7 +84,7 @@ function phonePanel(s,chat) {
    <details class="fd-risk-details"><summary>Alternative Entscheidung prüfen</summary><p>Den Anruf ohne Antwort lassen. Die Entscheidung wird als Ereignis dokumentiert.</p>${taskButton("ignore_phone","Anruf ignorieren (riskant)",!m.phoneAnswered&&!m.phoneIgnored,m.phoneIgnored,true)}</details>`}
  </div>`;
 }
-function invoicePanel(s,euro) {
+function invoicePanel(s,euro,events=[],finished=false) {
  return `<div class="fd-pane" id="fd-pane-invoice"><header class="fd-pane-heading"><div><p class="eyebrow">04 / RECHNUNGSSYSTEM</p><h2>Rechnung HT-2048</h2><span class="fd-pane-subtitle">Hotel Aurora · Lena Weber</span></div><span class="fd-context-chip">${s.corrected?"KORRIGIERT":s.opened?"OFFEN":"GESCHÜTZT"}</span></header>
   <div class="fd-invoice-layout">
     ${s.opened?`<div class="fd-paper"><div class="fd-paper-head"><b>HOTEL AURORA</b><small>RECHNUNG HT-2048</small></div>
@@ -97,6 +100,7 @@ function invoicePanel(s,euro) {
       <div class="fd-adjust"><label for="amount">Neuen Rechnungsbetrag eingeben</label><div><input id="amount" type="number" step="0.01" min="0" placeholder="220.00" ${!s.compared||s.replied?"disabled":""}/><button class="secondary" data-step="correct_invoice" ${!s.compared||s.replied?"disabled":""}>Speichern</button></div><small>Die Originalpositionen werden nicht von der KI verändert.</small></div>
    </div>
   </div>
+  ${s.opened?renderDrawingPanel(events,!finished):""}
  </div>`;
 }
 function handoverPanel(s,m) {
@@ -123,7 +127,7 @@ export function renderFrontDeskStudio(snapshot,{activeTab,renderChat,renderProgr
  const state=snapshot.state,m=state.multitask,tab=studioActiveTab(activeTab);
  const signals=studioTabSignals(state),progress=journeyProgress(snapshot.events,snapshot.mode);
  const chat=channel=>renderServiceChat(snapshot.events,channel,serviceLocale,safe,snapshot.status==="completed",serviceBusy);
- const content={guest:()=>guestPanel(state,renderChat),arrival:()=>arrivalPanel(state,chat("arrival")),phone:()=>phonePanel(state,chat("phone")),invoice:()=>invoicePanel(state,euro),handover:()=>handoverPanel(state,m)}[tab]();
+ const content={guest:()=>guestPanel(state,renderChat),arrival:()=>arrivalPanel(state,chat("arrival")),phone:()=>phonePanel(state,chat("phone")),invoice:()=>invoicePanel(state,euro,snapshot.events,snapshot.status==="completed"),learning:()=>renderLearningPanel(snapshot.events,snapshot.status==="completed"),handover:()=>handoverPanel(state,m)}[tab]();
  const navigation=()=>TABS.map(t=>`<button type="button" class="fd-tab ${t.id===tab?"fd-tab-active":""} ${signals[t.id].done?"fd-tab-done":""}" data-studio-tab="${t.id}" role="tab" aria-selected="${t.id===tab}" tabindex="${t.id===tab?"0":"-1"}"><span class="fd-tab-icon">${t.icon}</span><span>${t.label}</span>${signals[t.id].urgent?'<i class="fd-alert-pip"></i>':""}</button>`).join("");
  return `<div class="fd-studio">
   <div class="fd-topline"><span>SKILLPRINT <b>LIVE</b> <i> / </i> HOTEL AURORA</span><span class="fd-topline-right"><i></i>${snapshot.status==="completed"?"ASSESSMENT ABGESCHLOSSEN":"PRAKTISCHE ARBEITSPROBE"} · DEMO</span></div>
