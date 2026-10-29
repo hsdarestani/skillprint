@@ -308,8 +308,8 @@ function control() {
     <div class="control-grid"><section class="panel primary-panel"><div class="panel-top"><div><p class="eyebrow">A / SYNCHRONISIERTE TESTANSICHT</p><h2>Candidate workspace</h2></div><span class="stream-indicator"><i></i> ${REMOTE?"REMOTE STREAM":"LOCAL EVENT MIRROR"}</span></div>${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}</section>
       <aside class="panel evidence-panel"><div class="panel-top"><div><p class="eyebrow">B / LIVE EVENT STREAM</p><h2>Timeline</h2></div><span class="event-counter">${snapshot.events.length} EVENTS</span></div><div class="event-list">${snapshot.events.length?snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join(""):`<div class="empty-events"><div>◎</div><b>Warten auf die erste Aktion</b><p>Öffnen Sie den Kandidatenlink auf einem zweiten Gerät und starten Sie den Test.</p></div>`}</div></aside>
     </div>
-    ${report.multitask?multitaskControl(s,report.multitask):""}
-    <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><p class="eyebrow">C / TRANSPARENTE BEWERTUNG</p><h2>Kompetenzmatrix</h2></div><a class="inline-link" href="${href("report",snapshot.id,tokenFor(current()))}">Vollständiger Bericht ${icon("arrow")}</a></div><div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div><p class="subtle-note">Illustrative Rubrik. Die fachliche Aussage ist noch nicht validiert.</p></section>
+    ${report.multitask?multitaskControl(s,report.multitask,scoringReady):""}
+    <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><p class="eyebrow">C / TRANSPARENTE BEWERTUNG</p><h2>Kompetenzmatrix</h2></div><a class="inline-link" href="${href("report",snapshot.id,tokenFor(current()))}">Vollständiger Bericht ${icon("arrow")}</a></div>${scoringReady?`<div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div>`:`<p class="fd-scoring-pending">Die Bewertung wird erst nach Abschluss der Aufgaben angezeigt. Die Live-Ereignisse sind bereits für die spätere manuelle Prüfung dokumentiert.</p>`}<p class="subtle-note">Illustrative Rubrik. Die fachliche Aussage ist noch nicht validiert.</p></section>
       <section class="panel note-panel"><div class="panel-top"><div><p class="eyebrow">D / BEOBACHTER-PROTOKOLL</p><h2>Beobachtung notieren</h2></div></div><label class="field-label" for="observer-note">Nur konkrete Handlungen, keine Persönlichkeitsdiagnosen</label><textarea id="observer-note" placeholder="Zum Beispiel: Der Kandidat prüfte zunächst die Buchungsnummer ..." rows="3"></textarea><button class="secondary" data-action="note">Notiz mit Zeitstempel sichern ${icon("arrow")}</button></section></div>
     <div class="bottom-cta"><div><p class="eyebrow accent">NEXT / EVIDENCE REPLAY</p><h2>Vom Score zurück zum Beleg.</h2></div><a class="primary" href="${href("report",snapshot.id,tokenFor(current()))}">Evidence Report öffnen ${icon("arrow")}</a></div>
   </div>`;
@@ -416,6 +416,17 @@ root.addEventListener("change",e=>{
   }
 });
 root.addEventListener("keydown",e=>{
+  const tab=e.target?.closest?.(".fd-tab");
+  if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
+    e.preventDefault();
+    const order=["guest","arrival","phone","invoice","handover"];
+    const index=order.indexOf(studioTab);
+    studioTab=order[(index+(e.key==="ArrowLeft"||e.key==="ArrowUp"?-1:1)+order.length)%order.length];
+    draw();
+    const target=root.querySelector(".fd-mobile-tabs .fd-tab.fd-tab-active")||root.querySelector(".fd-desktop-tabs .fd-tab.fd-tab-active");
+    target?.focus();
+    return;
+  }
   if(e.target?.id==="guest-chat" && e.key==="Enter" && !e.shiftKey && !e.isComposing){
     e.preventDefault();
     root.querySelector("[data-action=chat]")?.click();
