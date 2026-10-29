@@ -77,6 +77,20 @@ if (!hasFrontDeskStudio && scriptBody.includes("frontdesk-studio.js")) {
 console.log("FRONT DESK RELEASE:",JSON.stringify({hasFrontDeskStudio,main:mainURL.pathname}));
 assert.ok(hasFrontDeskStudio, "Cloudflare Pages still serves an older frontend without Sprint 3 Front Desk Studio.");
 console.log("PASS: public website serves the new integrated Front Desk Studio");
+if (mainURL.pathname === "/src/main.js") {
+  // Cloudflare Pages currently serves browser-native modules: verify both new
+  // dependencies rather than mistaking the older studio for the new release.
+  for (const [path,marker] of [["/src/service-ui.js","fd-service-chat"],["/src/service-dialogue.js","SERVICE_OPENING"]]) {
+    const response=await fetch(new URL(path,site),{signal:AbortSignal.timeout(20000)});
+    assert.equal(response.status,200,"Missing deployed Sprint 4 module: "+path);
+    assert.match(response.headers.get("content-type")||"",/javascript/i,"Non-JavaScript service module: "+path);
+    const contents=await response.text();
+    assert.ok(contents.includes(marker),"Stale service module: "+path);
+  }
+} else {
+  assert.ok(scriptBody.includes("fd-service-chat"),"Bundled frontend is missing service chat UI");
+}
+console.log("PASS: published Pages includes Sofia and Housekeeping service dialogue modules");
 
 
 console.log("Checking published SKILLPRINT backend:", BASE);
