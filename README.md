@@ -4,6 +4,20 @@
 
 Sprint 0 vertical slice for the `SKILLPRINT LIVE — Entwickler-Pflichtenheft v1.0 (29.10.2026)`. This is a **working demonstrator**, not a validated employment assessment, certified AI system, or product suitable for real candidate information.
 
+## Sprint 3 — Front Desk Studio (interactive workspace)
+
+The **advanced** Hotel Front Office scenario is now a single operational reception workspace, rather than a long sequence of stacked cards.
+
+- A responsive stylized **Hotel Aurora reception desk** visualizes Lena Weber, Sofia Demir, the internal Housekeeping phone and the invoice terminal. Every status and work-area navigation control is derived from the real saved session events.
+- Five interoperable work areas: **Gast**, **Check-in**, **Telefon**, **Rechnung**, **Abschluss**. Only the active area renders on mobile. The small fixed navigation supports touch and arrow-key switching.
+- Candidate typed **chat, invoice amount and final handover drafts are kept in page memory while switching work areas or while live updates arrive**. The drafts are not persisted to the backend until the candidate submits the corresponding action, and are deliberately cleared when entering another session.
+- Existing server-side sequencing, role tokens, evidence identifiers, deterministic scoring and optional multilingual AI chat remain intact.
+- The observer's Control Room mirrors a compact, event-derived desk status (guest complaint, waiting arrival, ringing phone, invoice), never a recording of a candidate's private screen.
+- The employer sees **no provisional numeric rubric** while the session is in progress, avoiding presentation of partial scores as candidate performance.
+- The visual room and telephone are **illustrative UI**, not 3D rendering, telephony, voice, camera tracking, or real room-booking software. No validated suitability or automated hiring claims.
+
+**Demo path:** Create **Live Multitasking Demo starten**, open the candidate link, converse with Lena, handle Sofia's arrival and Housekeeping call, correct the fictional 240 EUR bill, and send a written final response. Open the employer Control Room on another device to see evidence update in real time.
+
 ## Mobile assessment improvements (Sprint 2 QA)
 
 - Mobile candidate UI has a compact persistent four-section navigator (guest, check-in, telephone, invoice) to avoid very long scrolling when interruptions arrive.
