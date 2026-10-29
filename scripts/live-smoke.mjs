@@ -91,6 +91,15 @@ if (mainURL.pathname === "/src/main.js") {
   assert.ok(scriptBody.includes("fd-service-chat"),"Bundled frontend is missing service chat UI");
 }
 console.log("PASS: published Pages includes Sofia and Housekeeping service dialogue modules");
+if (mainURL.pathname === "/src/main.js") {
+  const source=await fetch(new URL("/src/evidence-lab.js",site),{signal:AbortSignal.timeout(20000)});
+  assert.equal(source.status,200,"Pencil/Replay source module is not deployed");
+  const body=await source.text();
+  assert.ok(body.includes("renderReplayWidget") && body.includes("renderLearningPanel"),"Pencil/Replay module outdated");
+} else {
+  assert.ok(scriptBody.includes("lab-invoice-svg") && scriptBody.includes("renderReplayWidget"),"Pencil/Replay missing from production bundle");
+}
+console.log("PASS: live Pages includes Pencil annotation, Teach–Retry–Transfer and replay module");
 
 
 console.log("Checking published SKILLPRINT backend:", BASE);

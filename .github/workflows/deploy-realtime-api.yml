@@ -51,3 +51,7 @@ jobs:
         env:
           SKILLPRINT_LIVE_API: ${{ steps.deploy.outputs.deployment-url }}
         run: node scripts/live-service-smoke.mjs
+      - name: Verify Pencil evidence, learning and replay from published events
+        env:
+          SKILLPRINT_LIVE_API: ${{ steps.deploy.outputs.deployment-url }}
+        run: node scripts/live-evidence-smoke.mjs

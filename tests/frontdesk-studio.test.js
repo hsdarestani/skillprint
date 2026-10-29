@@ -17,7 +17,7 @@ test("studio renders one active workspace and operational lobby stations",()=>{
  assert.match(html,/fd-cockpit/);
  assert.match(html,/fd-pane-guest/);
  assert.doesNotMatch(html,/id="fd-pane-arrival"/);
- assert.equal((html.match(/class="fd-tab /g)||[]).length,10);
+ assert.equal((html.match(/class="fd-tab /g)||[]).length,12);
  assert.match(html,/data-studio-tab="phone"/);
  assert.match(html,/data-studio-tab="handover"/);
  assert.match(html,/11/);

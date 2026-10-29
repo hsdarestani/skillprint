@@ -10,6 +10,18 @@ The existing **Cloudflare Pages Git integration** publishes the Front Desk Studi
 
 For future builds, configure Pages to build with `npm run build` and serve `dist` (Vite output) to avoid the slower browser-native source fallback. No extra Pages API token is needed for the existing Git auto-deployment.
 
+## Sprint 5 — Pencil evidence, sequence replay and Teach–Retry–Transfer
+
+The advanced Hotel Front Desk Studio now demonstrates three additional features grounded in the Sprint 0 developer specification. **All data is synthetic, and none of these exercises establishes hiring suitability.**
+
+- **Pencil/touch/mouse drawing:** after opening invoice HT-2048, candidates can annotate the fixed fictional invoice. Each completed stroke is stored as normalized 2D points plus event ID, server sequence and timestamp (40 strokes per session; 100 points per stroke). A drawing is evidence, never automatically considered a correct answer. Raw device screenshots are not recorded.
+- **Teach–Retry–Transfer:** the separate Lernen work area includes an unfamiliar baseline room-status decision, a standardized instruction, a differently phrased parallel question and a third context. Every response is stored immutably. Correct/incorrect responses are *illustrative checks*, **not psychometric measures** of learning or ability; equal difficulty, validity and job-specific scoring require independent expert testing.
+- **Evidence replay:** the employer Report can scrub a sequence timeline and reconstruct the documented state and marked invoice for that exact prefix of events. Clicking a rubric/evidence link targets its event sequence, providing an event-linked replay. It is not a screen-video reconstruction or pixel-accurate private device recording.
+- **Report:** the existing browser **Drucken / PDF** flow includes an evidence appendix with drawing and learning records and explicit uncertainty/human-review statements. This is print-to-PDF, not a backend PDF signing or archival service.
+- Existing 11-step core completion metrics deliberately exclude the optional learning demonstration and drawings, so applicants do not earn inflated task scores from these new interactions.
+
+No real applicant or customer data should be entered. Drawings are recorded only when a completed stroke is sent; live observer state updates **per completed stroke**, not on every pointer movement.
+
 ## Sprint 4 — natural-language arrival and internal phone dialogue
 
 The advanced Hotel Front Desk Studio now supports **three distinct text conversations**: invoice guest Lena Weber, arriving guest Sofia Demir and Housekeeping on the internal phone. Sofia and Housekeeping have separate, event-based conversation histories and consistent fictional scenario facts. The model can respond in **German, Turkish or English**; an explicitly labeled deterministic fallback keeps the demo usable during model outages.

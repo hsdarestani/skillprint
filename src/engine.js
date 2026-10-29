@@ -43,6 +43,9 @@ export const ACTION_LABELS = {
   submit_reply: "Antwort dokumentiert",
   observer_note: "Beobachternotiz",
   human_review: "Fachlich freigegeben",
+  drawing_stroke: "Rechnungsposition auf dem Dokument markiert",
+  learning_response: "Lernaufgabe beantwortet",
+  learning_instruction: "Standardisierte Anleitung gelesen",
 };
 export function newSession(id, at = new Date().toISOString(), mode = "classic") {
   const selected = mode === "multitask" ? "multitask" : "classic";
@@ -89,6 +92,32 @@ export function isRelevantClarification(value = "") {
   const enquiry=/(\?|warum|wieso|wie |was |welch|können sie|könnten sie|erklären|beschreib|woran|why|what|which|how |could you|can you|would you|please explain|tell me|describe|neden|nasıl|hangi|nedir|açıklar|söyler|kontrol ed|bakabilir)/i.test(text);
   return relevant && enquiry;
 }
+export const LEARNING_TASKS = Object.freeze({
+  baseline:{title:"Ausgangsaufgabe",context:"Ein Gast möchte sofort Zimmer 411 beziehen. Der Zimmerstatus ist noch ungeprüft.",choices:["Zimmer direkt zusagen","Status prüfen und Warteoption anbieten","Gast ohne Prüfung wegschicken"],correct:1},
+  retry:{title:"Vergleichbare Aufgabe",context:"Eine Anreise für Zimmer 412 trifft ein. Die Freigabe ist noch nicht bestätigt.",choices:["Zimmer sofort versprechen","Gast an eine andere Station schicken","Status prüfen und sichere Warteoption anbieten"],correct:2},
+  transfer:{title:"Transferaufgabe",context:"Später bittet ein Gast um ein neues Zimmer 417. Housekeeping kann noch keine Fertigstellungszeit nennen.",choices:["Status offen kommunizieren, Update zusagen und Warteoption erklären","Ankunftszeit verbindlich erfinden","Sofortige Zimmerfreigabe behaupten"],correct:0}
+});
+export function deriveLearning(events=[]) {
+  const response=phase=>events.find(e=>e.actor==="candidate"&&e.type==="learning_response"&&e.payload?.phase===phase);
+  const values=Object.fromEntries(["baseline","retry","transfer"].map(phase=>[phase,response(phase)]));
+  const taught=events.find(e=>e.actor==="candidate"&&e.type==="learning_instruction");
+  const completed=Boolean(values.baseline&&taught&&values.retry&&values.transfer);
+  const indicator=Object.fromEntries(Object.entries(values).map(([phase,event])=>[phase,event?Number(event.payload.choice)===LEARNING_TASKS[phase].correct:null]));
+  return {
+    completed,taught:Boolean(taught),responses:values,indicator,
+    phase:!values.baseline?"baseline":!taught?"teach":!values.retry?"retry":!values.transfer?"transfer":"complete",
+    disclaimer:"Unvalidierte, illustrative Lernabfolge; keine psychologische Aussage über Lernfähigkeit oder Eignung."
+  };
+}
+export function drawingStrokes(events=[]) {
+  return events.filter(e=>e.actor==="candidate"&&e.type==="drawing_stroke").map(e=>({
+    id:e.id,at:e.at,sequence:e.sequence,points:e.payload.points
+  }));
+}
+export function replayAt(events=[],sequence=0) {
+  const limited=events.filter(e=>e.sequence<=sequence);
+  return {sequence,events:limited,state:deriveState(limited),learning:deriveLearning(limited),strokes:drawingStrokes(limited)};
+}
 export function deriveState(events = []) {
   const candidate = events.filter(e => e.actor === "candidate");
   const find = type => candidate.find(e => e.type === type);
@@ -113,6 +142,8 @@ export function deriveState(events = []) {
     replyText: reply?.payload?.text || "",
     attempts: candidate.filter(e => e.type === "correct_invoice").length,
     multitask: deriveMultitask(events),
+    drawingCount:drawingStrokes(events).length,
+    learning:deriveLearning(events),
   };
 }
 // Progress is a navigation aid, not a validated candidate competency score.
@@ -169,7 +200,7 @@ export function evaluate(events = [], mode = "classic") {
   };
 }
 const MULTITASK_ACTIONS = new Set(["welcome_checkin","verify_checkin","hold_phone","ignore_phone","answer_phone","promise_room","offer_wait","complete_checkin"]);
-const CANDIDATE_ACTIONS = new Set([...MULTITASK_ACTIONS,"service_message","candidate_message", "ask_guest", "verify_identity", "open_invoice", "compare_items", "correct_invoice", "escalate", "submit_reply"]);
+const CANDIDATE_ACTIONS = new Set([...MULTITASK_ACTIONS,"drawing_stroke","learning_response","learning_instruction","service_message","candidate_message", "ask_guest", "verify_identity", "open_invoice", "compare_items", "correct_invoice", "escalate", "submit_reply"]);
 export function appendAction(session, action, role, now = new Date().toISOString()) {
   if (!session || !Array.isArray(session.events)) throw new Error("INVALID_SESSION");
   if (!action || typeof action.type !== "string") throw new Error("INVALID_ACTION");
@@ -204,6 +235,18 @@ export function appendAction(session, action, role, now = new Date().toISOString
     if (action.type==="service_message" && messages>responses) throw new Error("SERVICE_REPLY_PENDING");
     if (action.type==="service_reply" && messages<=responses) throw new Error("NO_SERVICE_REQUEST");
   }
+  if (["drawing_stroke","learning_response","learning_instruction"].includes(action.type) && !advanced) throw new Error("ADVANCED_MODE_REQUIRED");
+  if (action.type === "drawing_stroke") {
+    if (!current.opened) throw new Error("OPEN_INVOICE_FIRST");
+    if (drawingStrokes(session.events).length>=40) throw new Error("DRAWING_LIMIT");
+  }
+  if (action.type==="learning_response") {
+    const phase=action.phase;
+    if (!["baseline","retry","transfer"].includes(phase) || !Number.isInteger(action.choice) ||
+        action.choice<0 || action.choice>=LEARNING_TASKS[phase].choices.length) throw new Error("INVALID_LEARNING_CHOICE");
+    if (current.learning.phase!==phase) throw new Error("LEARNING_OUT_OF_ORDER");
+  }
+  if (action.type==="learning_instruction" && current.learning.phase!=="teach") throw new Error("LEARNING_OUT_OF_ORDER");
   if (MULTITASK_ACTIONS.has(action.type) && !advanced) throw new Error("ADVANCED_MODE_REQUIRED");
   if (advanced && action.type === "submit_reply" && (!mt.checkinResolved || !mt.phoneAnswered)) throw new Error("SERVICE_QUEUE_INCOMPLETE");
   if (action.type === "welcome_checkin" && !mt.checkinArrived) throw new Error("GUEST_NOT_ARRIVED");
@@ -218,6 +261,14 @@ export function appendAction(session, action, role, now = new Date().toISOString
   if (action.type === "correct_invoice" && !current.compared) throw new Error("COMPARE_INVOICE_FIRST");
   if (action.type === "submit_reply" && !current.opened) throw new Error("OPEN_INVOICE_FIRST");
   const payload = {};
+  if (action.type === "drawing_stroke") {
+    const points=action.points;
+    if (!Array.isArray(points)||points.length<2||points.length>100 ||
+        !points.every(p=>Array.isArray(p)&&p.length===2&&p.every(v=>typeof v==="number"&&Number.isFinite(v)&&v>=0&&v<=1))) throw new Error("INVALID_DRAWING");
+    payload.points=points.map(p=>p.map(v=>Math.round(v*10000)/10000));
+  }
+  if (action.type === "learning_response") {payload.phase=action.phase;payload.choice=action.choice;}
+  if (action.type === "learning_instruction") {payload.version="hotel_room_status_intro_v1";}
   if (action.type === "correct_invoice") {
     const amount = Number(action.amount);
     if (!Number.isFinite(amount) || amount < 0 || amount > 10000) throw new Error("INVALID_AMOUNT");
@@ -235,7 +286,7 @@ export function appendAction(session, action, role, now = new Date().toISOString
   const events=[...session.events,event];
   if (advanced && role === "candidate") {
     // Scenario interruptions are persisted and replayable, never browser-local timers.
-    const completedSteps = events.filter(e=>e.actor==="candidate" && e.type!=="submit_reply").length;
+    const completedSteps = events.filter(e=>e.actor==="candidate" && !["submit_reply","drawing_stroke","learning_response","learning_instruction","candidate_message","service_message"].includes(e.type)).length;
     for (const [trigger,type] of [[2,"checkin_arrival"],[4,"phone_ringing"]]) {
       if(completedSteps>=trigger && !events.some(e=>e.type===type)) {
         events.push({id:"sys_"+type,sequence:events.length+1,at:now,actor:"system",type,
