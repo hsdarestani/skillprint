@@ -1,5 +1,6 @@
 
 import { SCENARIO, ACTION_LABELS, journeyProgress } from "./engine.js";
+import { renderServiceChat } from "./service-ui.js";
 
 // A presentation layer only. All decisions still use the existing role-protected,
 // ordered event ledger and human-reviewed rubric; no new synthetic achievements.
@@ -49,12 +50,14 @@ function guestPanel(s,renderChat) {
    </div>
  </div>`;
 }
-function arrivalPanel(s) {
+function arrivalPanel(s,chat) {
  const m=s.multitask;
  return `<div class="fd-pane" id="fd-pane-arrival"><header class="fd-pane-heading"><div><p class="eyebrow">02 / ANREISE</p><h2>Sofia Demir</h2><span class="fd-pane-subtitle">Reservierung CK-311 · Zimmer 311</span></div><span class="fd-context-chip ${m.checkinArrived&&!m.checkinResolved?"fd-context-warn":""}">${statusLabel(m.checkinResolved,m.checkinArrived)}</span></header>
    ${!m.checkinArrived?`<div class="fd-empty-task"><div class="fd-empty-glyph">⌛</div><h3>Der Gast ist noch unterwegs</h3><p>Die Anreise erscheint im laufenden Arbeitsablauf. Beginnen Sie mit dem Anliegen von Lena Weber.</p><button class="outline" data-studio-tab="guest">Zum Gästegespräch →</button></div>`:
     `<div class="fd-task-story"><div class="fd-story-avatar">SD</div><div><b>Ein Gast wartet am Empfang</b><p>„Guten Tag, ich möchte einchecken. Ist mein Zimmer schon fertig?“</p></div></div>
     <div class="fd-fact-strip"><span>BUCHUNG <b>CK-311</b></span><span>ZIMMER <b>311</b></span><span>STATUS <b class="fd-warn-text">Nicht freigegeben</b></span></div>
+    ${chat}
+    <p class="fd-system-hint">Gespräche werden aufgezeichnet. Buchungsprüfungen und konkrete Entscheidungen werden separat im Hotelsystem bestätigt.</p>
     <div class="fd-step-stack">
       ${taskButton("welcome_checkin","Gast begrüßen",true,m.checkinWelcomed)}
       ${taskButton("verify_checkin","Reservierung abgleichen",m.checkinWelcomed,m.checkinVerified)}
@@ -64,11 +67,13 @@ function arrivalPanel(s) {
     <details class="fd-risk-details"><summary>Alternative Entscheidung prüfen</summary><p>Sie können ein noch nicht freigegebenes Zimmer zusagen. Diese riskante Entscheidung wird als Fehlerbeleg aufgezeichnet.</p>${taskButton("promise_room","Zimmer sofort zusagen (riskant)",!m.roomPromised,false,true)}</details>`}
  </div>`;
 }
-function phonePanel(s) {
+function phonePanel(s,chat) {
  const m=s.multitask;
  return `<div class="fd-pane" id="fd-pane-phone"><header class="fd-pane-heading"><div><p class="eyebrow">03 / INTERNER ANRUF</p><h2>Housekeeping</h2><span class="fd-pane-subtitle">Interne Rückfrage · Zimmer 311</span></div><span class="fd-context-chip ${m.phoneRinging&&!m.phoneAnswered?"fd-context-warn":""}">${statusLabel(m.phoneAnswered,m.phoneRinging)}</span></header>
   ${!m.phoneRinging?`<div class="fd-empty-task"><div class="fd-empty-glyph">⌁</div><h3>Leitung frei</h3><p>Ein interner Anruf kann während der Bearbeitung eintreffen. Beobachten Sie die aktive Warteschlange.</p><button class="outline" data-studio-tab="guest">Zum Gästegespräch →</button></div>`:
    `<div class="fd-call-screen ${!m.phoneAnswered?"fd-call-active":""}"><div class="fd-call-mark">⌁</div><p>${m.phoneAnswered?"GESPRÄCH BEENDET":"EINGEHENDER ANRUF"}</p><h3>Housekeeping · Zimmer 311</h3><span>${m.phoneAnswered?"Zimmer noch nicht freigegeben. Keine verbindliche Fertigstellungszeit.":"Die Abteilung möchte den Zimmerstatus klären."}</span></div>
+   ${chat}
+   <p class="fd-system-hint">Das Gespräch ist frei formuliert. Für den dokumentierten Zimmerstatus bitte die Telefonaktion bestätigen.</p>
    <div class="fd-step-stack">
       ${taskButton("hold_phone","Anruf höflich halten",!m.phoneAnswered,m.phoneHeld)}
       ${taskButton("answer_phone","Anruf beantworten",!m.phoneAnswered,m.phoneAnswered)}
@@ -109,15 +114,16 @@ function handoverPanel(s,m) {
  </div>`;
 }
 function latestEvent(events,safe,fmt) {
- const e=events.filter(x=>x.actor==="candidate"||x.actor==="guest"||x.actor==="system").at(-1);
+ const e=events.filter(x=>x.actor==="candidate"||x.actor==="guest"||x.actor==="system"||x.actor==="service").at(-1);
  if(!e)return `<div class="fd-activity-empty">Die Schicht hat begonnen. Ihre ersten Handlungen erscheinen hier.</div>`;
- const title=e.type==="candidate_message"?"Nachricht an Lena Weber":e.type==="guest_message"?"Antwort von Lena Weber":ACTION_LABELS[e.type]||e.type;
- return `<div class="fd-last-event"><span class="fd-mini-dot"></span><div><b>${safe(title)}</b><small>${fmt(e.at)} · ${e.actor==="system"?"Neue Situation":e.actor==="guest"?"KI-Gast":"Ihre Aktion"}</small></div></div>`;
+ const title=e.type==="candidate_message"?"Nachricht an Lena Weber":e.type==="guest_message"?"Antwort von Lena Weber":e.type==="service_reply"?"Antwort von "+(e.payload.channel==="phone"?"Housekeeping":"Sofia Demir"):ACTION_LABELS[e.type]||e.type;
+ return `<div class="fd-last-event"><span class="fd-mini-dot"></span><div><b>${safe(title)}</b><small>${fmt(e.at)} · ${e.actor==="system"?"Neue Situation":e.actor==="guest"?"KI-Gast":e.actor==="service"?"Rollenspiel":"Ihre Aktion"}</small></div></div>`;
 }
-export function renderFrontDeskStudio(snapshot,{activeTab,renderChat,renderProgress,safe,euro,fmt}) {
+export function renderFrontDeskStudio(snapshot,{activeTab,renderChat,renderProgress,safe,euro,fmt,serviceLocale="de",serviceBusy=false}) {
  const state=snapshot.state,m=state.multitask,tab=studioActiveTab(activeTab);
  const signals=studioTabSignals(state),progress=journeyProgress(snapshot.events,snapshot.mode);
- const content={guest:()=>guestPanel(state,renderChat),arrival:()=>arrivalPanel(state),phone:()=>phonePanel(state),invoice:()=>invoicePanel(state,euro),handover:()=>handoverPanel(state,m)}[tab]();
+ const chat=channel=>renderServiceChat(snapshot.events,channel,serviceLocale,safe,snapshot.status==="completed",serviceBusy);
+ const content={guest:()=>guestPanel(state,renderChat),arrival:()=>arrivalPanel(state,chat("arrival")),phone:()=>phonePanel(state,chat("phone")),invoice:()=>invoicePanel(state,euro),handover:()=>handoverPanel(state,m)}[tab]();
  const navigation=()=>TABS.map(t=>`<button type="button" class="fd-tab ${t.id===tab?"fd-tab-active":""} ${signals[t.id].done?"fd-tab-done":""}" data-studio-tab="${t.id}" role="tab" aria-selected="${t.id===tab}" tabindex="${t.id===tab?"0":"-1"}"><span class="fd-tab-icon">${t.icon}</span><span>${t.label}</span>${signals[t.id].urgent?'<i class="fd-alert-pip"></i>':""}</button>`).join("");
  return `<div class="fd-studio">
   <div class="fd-topline"><span>SKILLPRINT <b>LIVE</b> <i> / </i> HOTEL AURORA</span><span class="fd-topline-right"><i></i>${snapshot.status==="completed"?"ASSESSMENT ABGESCHLOSSEN":"PRAKTISCHE ARBEITSPROBE"} · DEMO</span></div>
