@@ -2,7 +2,9 @@ import "./style.css";
 import { SCENARIO, ACTION_LABELS, appendAction, newSession, deriveState, evaluate } from "./engine.js";
 
 const root = document.getElementById("app");
-const API = String(import.meta.env.VITE_SKILLPRINT_API_BASE || window.SKILLPRINT_API_BASE || "").trim().replace(/\/$/, "");
+// The deployed, healthy demo Worker URL is set in public/config.js; it is a safe
+// public fallback when Pages build variables were omitted or entered incorrectly.
+const API = String(window.SKILLPRINT_API_BASE || import.meta.env.VITE_SKILLPRINT_API_BASE || "").trim().replace(/\/$/, "");
 const REMOTE = Boolean(API);
 let apiHealth = REMOTE ? "checking" : "local";
 const STORE = "skillprint:sprint0:session:";

@@ -18,6 +18,24 @@ Sprint 0 vertical slice for the `SKILLPRINT LIVE — Entwickler-Pflichtenheft v1
 
 **Not implemented yet:** generative AI customer (the current dialogue is scripted), identity verification of real individuals (the check is a simulation), cross-tenant management, real authentication/MFA, video/audio, actual multilingual scenario localization, independent assessment validity studies, automated ATS integrations, VR, legal/privacy clearance. These items are intentionally **not** simulated or advertised as live features.
 
+## White-screen recovery for skillprint.pages.dev
+
+The UI is a **Vite** project. If Cloudflare publishes the repository root or the `public/` directory instead of the built `dist/`, the HTML may load but the JavaScript app will fail. Do **not** use the `worker/wrangler.toml` file as the Pages framework configuration: it belongs to a **different Worker deployment**.
+
+In the Cloudflare Pages project `skillprint`, verify:
+
+- **Production branch**: `main`
+- **Framework preset**: Vite or None (both can work with these explicit settings)
+- **Root directory**: repository root (empty or `/`)
+- **Build command**: `npm run build`
+- **Build output directory**: `dist`
+- **Node version**: 22 (if a runtime version is explicitly selected)
+- **Latest production deployment**: should use the current `main` commit
+
+The app now has a static, dark startup screen: if a JavaScript entrypoint is missing or errors, it displays a diagnostic rather than an empty white page. A CI smoke check also verifies that generated HTML references real `dist/assets/*` files. The public demo Worker URL is embedded in `public/config.js` so an API environment variable is not required for this demo.
+
+If the project was originally deployed via **Direct Upload**, GitHub commits will not automatically redeploy it: build locally, upload the resulting `dist/` contents, or create a Git-connected Pages project.
+
 ## Local preview
 
 Requires Node.js 20.19+ or 22+.
