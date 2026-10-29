@@ -82,3 +82,7 @@
   .mission-progress{padding:17px}
 }
 @media print{.mission-dock{display:none!important}.candidate-page:has(.mission-dock){padding-bottom:0}}
+
+/* Prerequisite-blocked is not completed. */
+.action-tile.is-blocked{background:#11202e;border-color:#2b3d4c;color:#8597a5}
+.action-tile.is-blocked>span{color:#718a9b}
