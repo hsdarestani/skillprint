@@ -11,3 +11,17 @@ new_sqlite_classes = ["AssessmentRoom"]
 
 [ai]
 binding = "AI"
+
+[[ratelimits]]
+name = "RATE_CREATE"
+namespace_id = "52301"
+[ratelimits.simple]
+limit = 6
+period = 60
+
+[[ratelimits]]
+name = "RATE_CHAT"
+namespace_id = "52302"
+[ratelimits.simple]
+limit = 24
+period = 60
