@@ -359,10 +359,11 @@ function reportView() {
   if (!snapshot) return loading();
   if (snapshot.role !== "coach") return denied("Nur autorisierte Beobachter können den Ergebnisbericht öffnen.");
   const report = snapshot.report;
+  const reportReady=snapshot.status==="completed";
   const selected = snapshot.events.find(e=>e.id===chosenEvidence);
   return `<div class="report-page"><div class="page-heading"><div><p class="eyebrow">EVIDENCE REPORT / ${safe(snapshot.id)}</p><h1>Jede Aussage. <em>Ein Beleg.</em></h1><p>Die Rubrik ist eine vorläufige Demonstration. Die Entscheidung über Eignung oder Einstellung liegt ausschließlich beim Menschen.</p></div><div class="heading-controls"><button class="outline" data-action="print">${icon("file")} Drucken / PDF</button><button class="secondary" data-action="approve" ${snapshot.status!=="completed"||snapshot.reviewStatus==="approved"?"disabled":""}>${icon("check")} ${snapshot.reviewStatus==="approved"?"Freigabe erteilt":"Fachlich freigeben"}</button></div></div>
-    <div class="report-hero"><div><p class="eyebrow">BEOBACHTETE LEISTUNG / DEMO</p><div class="score-number">${report.total}<span> / 100</span></div><p>Gewichteter Aufgabenwert, keine Eignungswahrscheinlichkeit.</p></div><div class="report-status"><div class="status-ribbon"><span>REPORT STATUS</span>${tag(snapshot.reviewStatus==="approved"?"HUMAN REVIEWED":"HUMAN REVIEW REQUIRED",snapshot.reviewStatus==="approved"?"connected":"gold")}</div><div class="status-ribbon"><span>JOB FAMILY</span><strong>HOTEL FRONT OFFICE</strong></div><div class="status-ribbon"><span>RUBRIC VERSION</span><strong>${safe(snapshot.rubricVersion)}</strong></div><div class="status-ribbon"><span>EVIDENCE EVENTS</span><strong>${report.evidenceCount}</strong></div></div></div>
-    <div class="report-grid"><section class="panel"><div class="panel-top"><div><p class="eyebrow">01 / BEWERTUNGSMATRIX</p><h2>Kriterien mit Belegverknüpfung</h2></div></div><div class="criterion-list">${report.criteria.map(c=>`<article class="criterion"><div class="criterion-header"><div><h3>${safe(c.title)}</h3><span>GEWICHT ${c.weight}%</span></div><strong>${c.points} / 2</strong></div><p>${safe(c.reason)}</p><div class="criterion-footer"><span>${c.weighted} gewichtete Punkte</span>${c.evidence.length?`<button class="evidence-link" data-evidence="${safe(c.evidence[0])}">${icon("link")} Beleg öffnen · ${c.evidence.length} Ereignis(se)</button>`:"<span class='no-evidence'>Nicht beurteilbar / kein Beleg</span>"}</div></article>`).join("")}</div></section>
+    <div class="report-hero"><div><p class="eyebrow">BEOBACHTETE LEISTUNG / DEMO</p><div class="score-number">${reportReady?report.total:"—"}<span>${reportReady?" / 100":" · Nach Abschluss"}</span></div><p>Gewichteter Aufgabenwert, keine Eignungswahrscheinlichkeit.</p></div><div class="report-status"><div class="status-ribbon"><span>REPORT STATUS</span>${tag(snapshot.reviewStatus==="approved"?"HUMAN REVIEWED":"HUMAN REVIEW REQUIRED",snapshot.reviewStatus==="approved"?"connected":"gold")}</div><div class="status-ribbon"><span>JOB FAMILY</span><strong>HOTEL FRONT OFFICE</strong></div><div class="status-ribbon"><span>RUBRIC VERSION</span><strong>${safe(snapshot.rubricVersion)}</strong></div><div class="status-ribbon"><span>EVIDENCE EVENTS</span><strong>${report.evidenceCount}</strong></div></div></div>
+    <div class="report-grid"><section class="panel"><div class="panel-top"><div><p class="eyebrow">01 / BEWERTUNGSMATRIX</p><h2>Kriterien mit Belegverknüpfung</h2></div></div><div class="criterion-list">${report.criteria.map(c=>`<article class="criterion"><div class="criterion-header"><div><h3>${safe(c.title)}</h3><span>GEWICHT ${c.weight}%</span></div><strong>${reportReady?c.points+" / 2":"Ausstehend"}</strong></div><p>${safe(c.reason)}</p><div class="criterion-footer"><span>${c.weighted} gewichtete Punkte</span>${c.evidence.length?`<button class="evidence-link" data-evidence="${safe(c.evidence[0])}">${icon("link")} Beleg öffnen · ${c.evidence.length} Ereignis(se)</button>`:"<span class='no-evidence'>Nicht beurteilbar / kein Beleg</span>"}</div></article>`).join("")}</div></section>
     <aside class="panel report-timeline"><div class="panel-top"><div><p class="eyebrow">02 / REPLAY INDEX</p><h2>Zeitgestempelte Handlungen</h2></div></div><div class="event-list">${snapshot.events.length?snapshot.events.map(e=>eventLine(e,true)).join(""):"<p>Keine Ereignisse vorhanden.</p>"}</div>${selected?`<div class="evidence-detail"><p class="eyebrow accent">AUSGEWÄHLTER BELEG</p><h3>${safe(ACTION_LABELS[selected.type]||selected.type)}</h3><p>${fmt(selected.at)} · ${safe(selected.actor)} · Event #${selected.sequence}</p><pre>${safe(JSON.stringify(selected.payload,null,2))}</pre></div>`:"<div class='evidence-detail placeholder'>Klicken Sie auf einen Rubrik-Beleg oder einen Timeline-Eintrag, um die Originalaktion zu sehen.</div>"}</aside></div>
     ${report.multitask?multitaskReport(report.multitask):""}
     ${snapshot.mode==="multitask"?renderReplayWidget(snapshot.events,replaySequence??snapshot.events.at(-1)?.sequence??0):""}
@@ -425,7 +426,7 @@ async function onClick(event) {
     const picked=snapshot?.events.find(e=>e.id===chosenEvidence);
     replaySequence=picked?.sequence??replaySequence;
     draw();
-    document.querySelector(".evidence-detail")?.scrollIntoView({ behavior:"smooth", block:"nearest" });
+    (document.querySelector("#evidence-replay")||document.querySelector(".evidence-detail"))?.scrollIntoView({ behavior:"smooth", block:"nearest" });
     return;
   }
   const action = element.dataset.action;
@@ -509,7 +510,7 @@ async function finishInk(event,cancel=false) {
 root.addEventListener("pointerup",event=>{void finishInk(event);});
 root.addEventListener("pointercancel",event=>{void finishInk(event,true);});
 root.addEventListener("click",onClick);
-root.addEventListener("input",e=>{
+root.addEventListener("change",e=>{
   if(e.target?.id==="replay-range") {
     replaySequence=Number(e.target.value);
     draw();
