@@ -396,3 +396,9 @@
   .report-page{background:#fff;color:#142839}
   .report-page .panel,.report-page .lab-replay{break-inside:avoid}
 }
+
+.lab-observer-live-document{margin-top:17px;padding:14px;background:#0c2635;border:1px solid #426374;border-radius:10px}
+.lab-observer-heading{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:0 0 10px;font-size:10px;letter-spacing:.11em;color:#d7b986}
+.lab-observer-heading b{font-size:10px;letter-spacing:0;color:#98dbc9}
+.lab-observer-live-document .lab-document{max-width:850px;margin:0 auto}
+@media(max-width:520px){.lab-observer-heading{flex-direction:column;align-items:start}}
