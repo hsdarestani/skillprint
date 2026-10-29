@@ -1,7 +1,7 @@
 import { SCENARIO, ACTION_LABELS, appendAction, newSession, deriveState, evaluate } from "./engine.js";
 import { OPENING, fallbackGuest, normalizeLocale } from "./guest.js";
 import { multitaskBanner, multitaskWorkspace, multitaskControl, multitaskReport } from "./multitask-ui.js";
-import { missionProgress, missionDock } from "./mission-ui.js";
+import { missionProgress, missionDock, invoiceActionStates } from "./mission-ui.js";
 
 const root = document.getElementById("app");
 // The deployed, healthy demo Worker URL is set in public/config.js; it is a safe
@@ -243,11 +243,7 @@ function candidateView() {
   if (!snapshot) return loading();
   if (snapshot.role !== "candidate") return denied("Für die Aufgabenansicht wird der separate Kandidatenlink benötigt.");
   const s = snapshot.state;
-  const actions = [
-    { type:"verify_identity",label:"Identität prüfen (Demo)",done:s.verified,disabled:s.verified },
-    { type:"open_invoice",label:"Rechnung öffnen",done:s.opened,disabled:s.opened },
-    { type:"compare_items",label:"Positionen vergleichen",done:s.compared,disabled:!s.opened||s.compared },
-  ];
+  const actions = invoiceActionStates(s);
   return `<div class="candidate-page">
     <div class="page-heading"><div><p class="eyebrow">ASSESSMENT / FRONT OFFICE AGENT</p><h1>Ihr praktischer Arbeitstest</h1><p>Ein simuliertes Gästegespräch mit einer fehlerhaften Rechnung. Arbeiten Sie so, wie Sie es im Hotel tun würden.</p></div>${tag(snapshot.status==="completed"?"ABSCHLOSS ERFOLGT":"SIMULATION LÄUFT",snapshot.status==="completed"?"connected":"live")}</div>
     ${missionProgress(snapshot.events,snapshot.mode)}
