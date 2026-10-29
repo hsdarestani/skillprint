@@ -33,3 +33,14 @@ test("observer notes require coach role", () => {
   const s = appendAction(newSession("x"), {type:"observer_note", text:"Prüfte Rechnung mit sinnvollem Zwischenschritt."}, "coach");
   assert.equal(s.events[0].actor, "observer");
 });
+
+test("completed answer can be safely retried with the same event ID", () => {
+  let s = newSession("sl-finish");
+  s = act(s, "open_invoice");
+  const answer = {type:"submit_reply", id:"submit_retry_001", text:"Wir prüfen die Rechnung und melden uns bei Ihnen."};
+  s = appendAction(s,answer,"candidate");
+  assert.equal(s.status,"completed");
+  s = appendAction(s,answer,"candidate");
+  assert.equal(s.events.length,2);
+  assert.throws(() => appendAction(s,{type:"verify_identity"},"candidate"),/ASSESSMENT_COMPLETED/);
+});
