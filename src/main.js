@@ -3,6 +3,7 @@ import { OPENING, fallbackGuest, normalizeLocale } from "./guest.js";
 import { multitaskBanner, multitaskWorkspace, multitaskControl, multitaskReport } from "./multitask-ui.js";
 import { missionProgress, missionDock, invoiceActionStates } from "./mission-ui.js";
 import { renderFrontDeskStudio, renderStudioObserver, studioActiveTab } from "./frontdesk-studio.js";
+import { renderReplayWidget,renderReportAppendix } from "./evidence-lab.js";
 import { scriptedServiceResponse } from "./service-dialogue.js";
 
 const root = document.getElementById("app");
@@ -23,6 +24,8 @@ let guestLocale = normalizeLocale(sessionStorage.getItem("skillprint:guestLocale
 let chatBusy = false;
 let serviceBusy = false;
 let studioTab = "guest";
+let replaySequence = null;
+let activeStroke = null;
 let lastStudioSession = "";
 const studioDrafts = Object.create(null);
 const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("skillprint-demo") : null;
@@ -190,6 +193,7 @@ async function navigate() {
   if (r.id !== lastStudioSession) {
     lastStudioSession = r.id;
     studioTab = "guest";
+    replaySequence=null;
     for (const id of Object.keys(studioDrafts)) delete studioDrafts[id];
   }
   if (socket) { socket.close(); socket = null; }
@@ -361,6 +365,8 @@ function reportView() {
     <div class="report-grid"><section class="panel"><div class="panel-top"><div><p class="eyebrow">01 / BEWERTUNGSMATRIX</p><h2>Kriterien mit Belegverknüpfung</h2></div></div><div class="criterion-list">${report.criteria.map(c=>`<article class="criterion"><div class="criterion-header"><div><h3>${safe(c.title)}</h3><span>GEWICHT ${c.weight}%</span></div><strong>${c.points} / 2</strong></div><p>${safe(c.reason)}</p><div class="criterion-footer"><span>${c.weighted} gewichtete Punkte</span>${c.evidence.length?`<button class="evidence-link" data-evidence="${safe(c.evidence[0])}">${icon("link")} Beleg öffnen · ${c.evidence.length} Ereignis(se)</button>`:"<span class='no-evidence'>Nicht beurteilbar / kein Beleg</span>"}</div></article>`).join("")}</div></section>
     <aside class="panel report-timeline"><div class="panel-top"><div><p class="eyebrow">02 / REPLAY INDEX</p><h2>Zeitgestempelte Handlungen</h2></div></div><div class="event-list">${snapshot.events.length?snapshot.events.map(e=>eventLine(e,true)).join(""):"<p>Keine Ereignisse vorhanden.</p>"}</div>${selected?`<div class="evidence-detail"><p class="eyebrow accent">AUSGEWÄHLTER BELEG</p><h3>${safe(ACTION_LABELS[selected.type]||selected.type)}</h3><p>${fmt(selected.at)} · ${safe(selected.actor)} · Event #${selected.sequence}</p><pre>${safe(JSON.stringify(selected.payload,null,2))}</pre></div>`:"<div class='evidence-detail placeholder'>Klicken Sie auf einen Rubrik-Beleg oder einen Timeline-Eintrag, um die Originalaktion zu sehen.</div>"}</aside></div>
     ${report.multitask?multitaskReport(report.multitask):""}
+    ${snapshot.mode==="multitask"?renderReplayWidget(snapshot.events,replaySequence??snapshot.events.at(-1)?.sequence??0):""}
+    ${snapshot.mode==="multitask"?renderReportAppendix(snapshot.events):""}
     <div class="warning-banner">${icon("shield")}<p><b>Verantwortungsvolle Bewertung.</b> Kein Emotion-Scoring, keine automatisierte Einstellung oder Ablehnung, kein Zugriff auf private Apps und keine Aussage über allgemeine Intelligenz oder Persönlichkeit. Fachliche Validierung, Datenschutzprüfung und echte Nutzerabnahme stehen noch aus.</p></div>
   </div>`;
 }
@@ -390,8 +396,21 @@ function draw() {
   }
 }
 async function onClick(event) {
-  const element = event.target.closest("[data-studio-tab], [data-action], [data-step], [data-evidence], [data-scroll-to]");
+  const element = event.target.closest("[data-studio-tab], [data-action], [data-step], [data-evidence], [data-scroll-to], [data-learning-instruction], [data-learning-choice], [data-replay-nav]");
   if (!element) return;
+  if (element.hasAttribute("data-replay-nav")) {
+    const latest=snapshot?.events.at(-1)?.sequence??0;
+    const from=replaySequence??latest;
+    replaySequence=Math.max(0,Math.min(latest,from+Number(element.dataset.replayNav)));
+    draw();document.getElementById("evidence-replay")?.scrollIntoView({block:"nearest"});return;
+  }
+  if (element.hasAttribute("data-learning-instruction") || element.hasAttribute("data-learning-choice")) {
+    try {
+      if(element.hasAttribute("data-learning-instruction")) await sendAction(current(),{id:crypto.randomUUID(),type:"learning_instruction"});
+      else await sendAction(current(),{id:crypto.randomUUID(),type:"learning_response",phase:element.dataset.learningPhase,choice:Number(element.dataset.learningChoice)});
+    } catch(e){notification=e.message||"Lernaufgabe konnte nicht gespeichert werden";draw();}
+    return;
+  }
   if (element.dataset.studioTab) {
     const next=studioActiveTab(element.dataset.studioTab);
     if (next !== studioTab) { studioTab=next; draw(); }
@@ -403,6 +422,8 @@ async function onClick(event) {
   }
   if (element.dataset.evidence) {
     chosenEvidence = element.dataset.evidence;
+    const picked=snapshot?.events.find(e=>e.id===chosenEvidence);
+    replaySequence=picked?.sequence??replaySequence;
     draw();
     document.querySelector(".evidence-detail")?.scrollIntoView({ behavior:"smooth", block:"nearest" });
     return;
@@ -448,6 +469,12 @@ async function onClick(event) {
 }
 root.addEventListener("click",onClick);
 root.addEventListener("input",e=>{
+  if(e.target?.id==="replay-range") {
+    replaySequence=Number(e.target.value);
+    draw();
+  }
+});
+root.addEventListener("input",e=>{
   if (current().view==="candidate" && snapshot?.mode==="multitask" && ["guest-chat","guest-reply","amount","service-chat-arrival","service-chat-phone"].includes(e.target?.id)) studioDrafts[e.target.id]=e.target.value;
 });
 root.addEventListener("change",e=>{
@@ -462,7 +489,7 @@ root.addEventListener("keydown",e=>{
   if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
     e.preventDefault();
     const origin=tab.closest(".fd-mobile-tabs")?".fd-mobile-tabs":".fd-desktop-tabs";
-    const order=["guest","arrival","phone","invoice","handover"];
+    const order=["guest","arrival","phone","invoice","learning","handover"];
     const index=order.indexOf(studioTab);
     studioTab=order[(index+(e.key==="ArrowLeft"||e.key==="ArrowUp"?-1:1)+order.length)%order.length];
     draw();
