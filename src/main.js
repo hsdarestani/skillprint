@@ -244,9 +244,9 @@ function candidateView() {
   if (snapshot.role !== "candidate") return denied("Für die Aufgabenansicht wird der separate Kandidatenlink benötigt.");
   const s = snapshot.state;
   const actions = [
-    { type:"verify_identity",label:"Identität prüfen (Demo)",disabled:s.verified },
-    { type:"open_invoice",label:"Rechnung öffnen",disabled:s.opened },
-    { type:"compare_items",label:"Positionen vergleichen",disabled:!s.opened||s.compared },
+    { type:"verify_identity",label:"Identität prüfen (Demo)",done:s.verified,disabled:s.verified },
+    { type:"open_invoice",label:"Rechnung öffnen",done:s.opened,disabled:s.opened },
+    { type:"compare_items",label:"Positionen vergleichen",done:s.compared,disabled:!s.opened||s.compared },
   ];
   return `<div class="candidate-page">
     <div class="page-heading"><div><p class="eyebrow">ASSESSMENT / FRONT OFFICE AGENT</p><h1>Ihr praktischer Arbeitstest</h1><p>Ein simuliertes Gästegespräch mit einer fehlerhaften Rechnung. Arbeiten Sie so, wie Sie es im Hotel tun würden.</p></div>${tag(snapshot.status==="completed"?"ABSCHLOSS ERFOLGT":"SIMULATION LÄUFT",snapshot.status==="completed"?"connected":"live")}</div>
@@ -256,7 +256,7 @@ function candidateView() {
       <div class="candidate-main">
         <section class="panel client-conversation" id="guest-contact"><div class="panel-top"><div><p class="eyebrow">01 / GÄSTEKONTAKT</p><h2>Nachricht von Lena Weber</h2></div><span class="avatar">LW</span></div>
           ${guestChatPanel(snapshot.events,s)}
-          <div class="action-grid">${actions.map(a=>`<button class="action-tile ${a.disabled?"is-done":""}" data-step="${a.type}" ${a.disabled?"disabled":""}><span>${a.disabled?"✓":"＋"}</span>${a.label}</button>`).join("")}</div>
+          <div class="action-grid">${actions.map(a=>`<button class="action-tile ${a.done?"is-done":a.disabled?"is-blocked":""}" data-step="${a.type}" ${a.disabled?"disabled":""}><span>${a.done?"✓":a.disabled?"·":"＋"}</span>${a.label}</button>`).join("")}</div>
         </section>
         ${snapshot.mode==="multitask"?multitaskWorkspace(s):""}
         <section class="panel" id="invoice-work"><div class="panel-top"><div><p class="eyebrow">02 / RECHNUNG</p><h2>Rechnungsprüfung</h2></div>${tag(s.corrected?"KORRIGIERT":s.opened?"IN BEARBEITUNG":"GESCHÜTZT",s.corrected?"connected":"muted")}</div>
