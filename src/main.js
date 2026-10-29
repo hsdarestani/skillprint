@@ -2,6 +2,7 @@ import { SCENARIO, ACTION_LABELS, appendAction, newSession, deriveState, evaluat
 import { OPENING, fallbackGuest, normalizeLocale } from "./guest.js";
 import { multitaskBanner, multitaskWorkspace, multitaskControl, multitaskReport } from "./multitask-ui.js";
 import { missionProgress, missionDock, invoiceActionStates } from "./mission-ui.js";
+import { renderFrontDeskStudio, renderStudioObserver, studioActiveTab } from "./frontdesk-studio.js";
 
 const root = document.getElementById("app");
 // The deployed, healthy demo Worker URL is set in public/config.js; it is a safe
@@ -19,6 +20,9 @@ let refreshId = 0;
 let notification = "";
 let guestLocale = normalizeLocale(sessionStorage.getItem("skillprint:guestLocale"));
 let chatBusy = false;
+let studioTab = "guest";
+let lastStudioSession = "";
+const studioDrafts = Object.create(null);
 const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("skillprint-demo") : null;
 const safe = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
 const fmt = at => at ? new Date(at).toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit", second:"2-digit" }) : "—";
@@ -46,6 +50,8 @@ function localSnapshot(id, token) {
   return role === "coach" ? { ...base, report:evaluate(s.events,s.mode) } : base;
 }
 async function startSession(mode = "classic") {
+  studioTab = "guest";
+  for (const id of Object.keys(studioDrafts)) delete studioDrafts[id];
   let data;
   if (REMOTE) {
     const response = await fetch(API + "/api/sessions", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({mode}) });
@@ -124,6 +130,7 @@ async function sendGuestChat(r, text) {
     }
     const field = document.getElementById("guest-chat");
     if (field) field.value = "";
+    studioDrafts["guest-chat"] = "";
   } finally {
     chatBusy = false;
     draw();
@@ -144,6 +151,11 @@ function connect(r) {
 }
 async function navigate() {
   const r = current(), requestId = ++refreshId;
+  if (r.id !== lastStudioSession) {
+    lastStudioSession = r.id;
+    studioTab = "guest";
+    for (const id of Object.keys(studioDrafts)) delete studioDrafts[id];
+  }
   if (socket) { socket.close(); socket = null; }
   if (r.view === "dashboard") { snapshot = null; draw(); return; }
   snapshot = null;
@@ -242,6 +254,13 @@ function guestChatPanel(events, state) {
 function candidateView() {
   if (!snapshot) return loading();
   if (snapshot.role !== "candidate") return denied("Für die Aufgabenansicht wird der separate Kandidatenlink benötigt.");
+  if (snapshot.mode === "multitask") {
+    return renderFrontDeskStudio(snapshot,{
+      activeTab:studioTab,
+      renderChat:()=>guestChatPanel(snapshot.events,snapshot.state),
+      safe,euro,fmt
+    });
+  }
   const s = snapshot.state;
   const actions = invoiceActionStates(s);
   return `<div class="candidate-page">
@@ -286,11 +305,11 @@ function control() {
   const scoringReady = snapshot.status === "completed";
   return `<div class="control-page"><div class="page-heading"><div><p class="eyebrow">LIVE ASSESSMENT / ${safe(snapshot.id)}</p><h1>Control Room <span class="title-outline">/ 01</span></h1><p>Beobachten Sie Arbeitsschritte, dokumentieren Sie Fakten und springen Sie anschließend direkt zum Beleg.</p></div><div class="heading-controls">${tag(snapshot.status==="completed"?"SESSION COMPLETED":"SESSION RUNNING",snapshot.status==="completed"?"connected":"live")}<button class="outline" data-action="copy-candidate">${icon("link")} Kandidatenlink</button></div></div>
     <div class="metrics-row"><div class="metric"><span>LIVE EREIGNISSE</span><strong>${snapshot.events.length.toString().padStart(2,"0")}</strong><small>Zeitgestempelte Actions</small></div><div class="metric"><span>ARBEITSPROBE / DEMO</span><strong>${scoringReady?report.total:"—"}${scoringReady?"<small> / 100</small>":""}</strong><small>${scoringReady?"Nicht validierter Übungswert":"Bewertung nach Abschluss"}</small></div><div class="metric"><span>BEOBACHTERSTATUS</span><strong class="metric-word">Verbunden</strong><small>Rollenbasierter Zugriff</small></div><div class="metric"><span>REPORTSTATUS</span><strong class="metric-word">${snapshot.reviewStatus==="approved"?"Geprüft":"Offen"}</strong><small>Human Review erforderlich</small></div></div>
-    <div class="control-grid"><section class="panel primary-panel"><div class="panel-top"><div><p class="eyebrow">A / SYNCHRONISIERTE TESTANSICHT</p><h2>Candidate workspace</h2></div><span class="stream-indicator"><i></i> ${REMOTE?"REMOTE STREAM":"LOCAL EVENT MIRROR"}</span></div>${mirror(s)}</section>
+    <div class="control-grid"><section class="panel primary-panel"><div class="panel-top"><div><p class="eyebrow">A / SYNCHRONISIERTE TESTANSICHT</p><h2>Candidate workspace</h2></div><span class="stream-indicator"><i></i> ${REMOTE?"REMOTE STREAM":"LOCAL EVENT MIRROR"}</span></div>${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}</section>
       <aside class="panel evidence-panel"><div class="panel-top"><div><p class="eyebrow">B / LIVE EVENT STREAM</p><h2>Timeline</h2></div><span class="event-counter">${snapshot.events.length} EVENTS</span></div><div class="event-list">${snapshot.events.length?snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join(""):`<div class="empty-events"><div>◎</div><b>Warten auf die erste Aktion</b><p>Öffnen Sie den Kandidatenlink auf einem zweiten Gerät und starten Sie den Test.</p></div>`}</div></aside>
     </div>
-    ${report.multitask?multitaskControl(s,report.multitask):""}
-    <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><p class="eyebrow">C / TRANSPARENTE BEWERTUNG</p><h2>Kompetenzmatrix</h2></div><a class="inline-link" href="${href("report",snapshot.id,tokenFor(current()))}">Vollständiger Bericht ${icon("arrow")}</a></div><div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div><p class="subtle-note">Illustrative Rubrik. Die fachliche Aussage ist noch nicht validiert.</p></section>
+    ${report.multitask?multitaskControl(s,report.multitask,scoringReady):""}
+    <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><p class="eyebrow">C / TRANSPARENTE BEWERTUNG</p><h2>Kompetenzmatrix</h2></div><a class="inline-link" href="${href("report",snapshot.id,tokenFor(current()))}">Vollständiger Bericht ${icon("arrow")}</a></div>${scoringReady?`<div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div>`:`<p class="fd-scoring-pending">Die Bewertung wird erst nach Abschluss der Aufgaben angezeigt. Die Live-Ereignisse sind bereits für die spätere manuelle Prüfung dokumentiert.</p>`}<p class="subtle-note">Illustrative Rubrik. Die fachliche Aussage ist noch nicht validiert.</p></section>
       <section class="panel note-panel"><div class="panel-top"><div><p class="eyebrow">D / BEOBACHTER-PROTOKOLL</p><h2>Beobachtung notieren</h2></div></div><label class="field-label" for="observer-note">Nur konkrete Handlungen, keine Persönlichkeitsdiagnosen</label><textarea id="observer-note" placeholder="Zum Beispiel: Der Kandidat prüfte zunächst die Buchungsnummer ..." rows="3"></textarea><button class="secondary" data-action="note">Notiz mit Zeitstempel sichern ${icon("arrow")}</button></section></div>
     <div class="bottom-cta"><div><p class="eyebrow accent">NEXT / EVIDENCE REPLAY</p><h2>Vom Score zurück zum Beleg.</h2></div><a class="primary" href="${href("report",snapshot.id,tokenFor(current()))}">Evidence Report öffnen ${icon("arrow")}</a></div>
   </div>`;
@@ -318,10 +337,14 @@ function draw() {
   const focused = document.activeElement?.id;
   for (const id of ["guest-chat","guest-reply","observer-note","amount"]) {
     const input = document.getElementById(id);
-    if (input && "value" in input) editable[id]=input.value;
+    if (input && "value" in input) {
+      editable[id]=input.value;
+      if (r.view === "candidate" && snapshot?.mode === "multitask") studioDrafts[id]=input.value;
+    }
   }
   root.innerHTML = `${header(r)}<div class="app-grid">${isCandidate?"":sidebar(r)}<main class="${isCandidate?"full-width":""}">${apiHealth==="offline"?'<div class="notice" role="alert">Realtime-Backend nicht erreichbar. Bitte Cloudflare Worker prüfen.</div>':""}${notification?`<div class="notice" role="alert">${safe(notification)} <button data-action="dismiss">×</button></div>`:""}${body}${footer()}</main></div>`;
-  for (const [id,value] of Object.entries(editable)) {
+  const restore = r.view === "candidate" && snapshot?.mode === "multitask" ? studioDrafts : editable;
+  for (const [id,value] of Object.entries(restore)) {
     const input = document.getElementById(id);
     if (input && !input.disabled) input.value=value;
   }
@@ -330,8 +353,13 @@ function draw() {
   }
 }
 async function onClick(event) {
-  const element = event.target.closest("[data-action], [data-step], [data-evidence], [data-scroll-to]");
+  const element = event.target.closest("[data-studio-tab], [data-action], [data-step], [data-evidence], [data-scroll-to]");
   if (!element) return;
+  if (element.dataset.studioTab) {
+    const next=studioActiveTab(element.dataset.studioTab);
+    if (next !== studioTab) { studioTab=next; draw(); }
+    return;
+  }
   if (element.dataset.scrollTo) {
     document.getElementById(element.dataset.scrollTo)?.scrollIntoView({behavior:window.matchMedia?.("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
     return;
@@ -369,11 +397,17 @@ async function onClick(event) {
       const payload = { type:step, id:crypto.randomUUID() };
       if (step === "correct_invoice") payload.amount = document.getElementById("amount")?.value;
       if (step === "submit_reply") payload.text = document.getElementById("guest-reply")?.value;
-      await sendAction(r,payload); return;
+      await sendAction(r,payload);
+      if (step === "correct_invoice") studioDrafts.amount = "";
+      if (step === "submit_reply") studioDrafts["guest-reply"] = "";
+      return;
     }
   } catch (e) { notification = e.message || "Aktion fehlgeschlagen"; draw(); }
 }
 root.addEventListener("click",onClick);
+root.addEventListener("input",e=>{
+  if (current().view==="candidate" && snapshot?.mode==="multitask" && ["guest-chat","guest-reply","amount"].includes(e.target?.id)) studioDrafts[e.target.id]=e.target.value;
+});
 root.addEventListener("change",e=>{
   if(e.target?.id==="guest-locale"){
     guestLocale=normalizeLocale(e.target.value);
@@ -382,6 +416,17 @@ root.addEventListener("change",e=>{
   }
 });
 root.addEventListener("keydown",e=>{
+  const tab=e.target?.closest?.(".fd-tab");
+  if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
+    e.preventDefault();
+    const origin=tab.closest(".fd-mobile-tabs")?".fd-mobile-tabs":".fd-desktop-tabs";
+    const order=["guest","arrival","phone","invoice","handover"];
+    const index=order.indexOf(studioTab);
+    studioTab=order[(index+(e.key==="ArrowLeft"||e.key==="ArrowUp"?-1:1)+order.length)%order.length];
+    draw();
+    root.querySelector(origin+" .fd-tab.fd-tab-active")?.focus();
+    return;
+  }
   if(e.target?.id==="guest-chat" && e.key==="Enter" && !e.shiftKey && !e.isComposing){
     e.preventDefault();
     root.querySelector("[data-action=chat]")?.click();
