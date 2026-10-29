@@ -32,6 +32,8 @@ export const ACTION_LABELS = {
   offer_wait: "Wartebereich und Rückmeldung angeboten",
   complete_checkin: "Check-in-Fall gelöst",
   candidate_message: "Nachricht an den KI-Gast",
+  service_message: "Nachricht an Anreise / Housekeeping",
+  service_reply: "Antwort aus Anreise / Housekeeping",
   guest_message: "Antwort des simulierten Gastes",
   verify_identity: "Gastidentität geprüft",
   open_invoice: "Rechnung geöffnet",
@@ -167,21 +169,22 @@ export function evaluate(events = [], mode = "classic") {
   };
 }
 const MULTITASK_ACTIONS = new Set(["welcome_checkin","verify_checkin","hold_phone","ignore_phone","answer_phone","promise_room","offer_wait","complete_checkin"]);
-const CANDIDATE_ACTIONS = new Set([...MULTITASK_ACTIONS,"candidate_message", "ask_guest", "verify_identity", "open_invoice", "compare_items", "correct_invoice", "escalate", "submit_reply"]);
+const CANDIDATE_ACTIONS = new Set([...MULTITASK_ACTIONS,"service_message","candidate_message", "ask_guest", "verify_identity", "open_invoice", "compare_items", "correct_invoice", "escalate", "submit_reply"]);
 export function appendAction(session, action, role, now = new Date().toISOString()) {
   if (!session || !Array.isArray(session.events)) throw new Error("INVALID_SESSION");
   if (!action || typeof action.type !== "string") throw new Error("INVALID_ACTION");
   if (role === "candidate" && !CANDIDATE_ACTIONS.has(action.type)) throw new Error("FORBIDDEN");
   if (role === "coach" && action.type !== "observer_note") throw new Error("FORBIDDEN");
   if (role === "guest" && action.type !== "guest_message") throw new Error("FORBIDDEN");
-  if (role !== "candidate" && role !== "coach" && role !== "guest") throw new Error("FORBIDDEN");
+  if (role === "service" && action.type !== "service_reply") throw new Error("FORBIDDEN");
+  if (role !== "candidate" && role !== "coach" && role !== "guest" && role !== "service") throw new Error("FORBIDDEN");
   // Retry of an already-committed action must succeed, even after completion or approval.
   const id = typeof action.id === "string" && /^[a-zA-Z0-9_-]{8,80}$/.test(action.id) ? action.id : crypto.randomUUID();
   if (session.events.some(e => e.id === id)) return session;
   if (session.reviewStatus === "approved") throw new Error("SESSION_FINALIZED");
   if (session.events.length >= 250) throw new Error("EVENT_LIMIT");
   const current = deriveState(session.events);
-  if ((role === "candidate" || role === "guest") && current.replied && action.type !== "guest_message") throw new Error("ASSESSMENT_COMPLETED");
+  if ((role === "candidate" || role === "guest" || role === "service") && current.replied && !["guest_message","service_reply"].includes(action.type)) throw new Error("ASSESSMENT_COMPLETED");
   if (action.type === "candidate_message") {
     if (current.candidateMessages >= 12) throw new Error("CHAT_LIMIT_REACHED");
     if (current.candidateMessages > current.guestMessages) throw new Error("GUEST_REPLY_PENDING");
@@ -190,6 +193,17 @@ export function appendAction(session, action, role, now = new Date().toISOString
   if (role === "candidate" && action.type === "submit_reply" && current.candidateMessages > current.guestMessages) throw new Error("GUEST_REPLY_PENDING");
   const advanced = session.mode === "multitask";
   const mt = current.multitask;
+  if (["service_message","service_reply"].includes(action.type)) {
+    if (!advanced) throw new Error("ADVANCED_MODE_REQUIRED");
+    if (!["arrival","phone"].includes(action.channel)) throw new Error("INVALID_SERVICE_CHANNEL");
+    if (action.channel==="arrival" && !mt.checkinArrived) throw new Error("GUEST_NOT_ARRIVED");
+    if (action.channel==="phone" && !mt.phoneRinging) throw new Error("PHONE_NOT_RINGING");
+    const messages=session.events.filter(e=>e.type==="service_message" && e.payload?.channel===action.channel).length;
+    const responses=session.events.filter(e=>e.type==="service_reply" && e.payload?.channel===action.channel).length;
+    if (action.type==="service_message" && messages>=6) throw new Error("SERVICE_CHAT_LIMIT");
+    if (action.type==="service_message" && messages>responses) throw new Error("SERVICE_REPLY_PENDING");
+    if (action.type==="service_reply" && messages<=responses) throw new Error("NO_SERVICE_REQUEST");
+  }
   if (MULTITASK_ACTIONS.has(action.type) && !advanced) throw new Error("ADVANCED_MODE_REQUIRED");
   if (advanced && action.type === "submit_reply" && (!mt.checkinResolved || !mt.phoneAnswered)) throw new Error("SERVICE_QUEUE_INCOMPLETE");
   if (action.type === "welcome_checkin" && !mt.checkinArrived) throw new Error("GUEST_NOT_ARRIVED");
@@ -209,14 +223,15 @@ export function appendAction(session, action, role, now = new Date().toISOString
     if (!Number.isFinite(amount) || amount < 0 || amount > 10000) throw new Error("INVALID_AMOUNT");
     payload.amount = amount;
   }
-  if (action.type === "submit_reply" || action.type === "observer_note" || action.type === "candidate_message" || action.type === "guest_message") {
+  if (["submit_reply","observer_note","candidate_message","guest_message","service_message","service_reply"].includes(action.type)) {
     const val = String(action.text || "").trim();
-    if (val.length < (action.type === "candidate_message" ? 3 : 8) || val.length > (action.type === "candidate_message" ? 500 : 800)) throw new Error("INVALID_TEXT");
+    if (val.length < (["candidate_message","service_message"].includes(action.type) ? 3 : 8) || val.length > (["candidate_message","service_message"].includes(action.type) ? 500 : 800)) throw new Error("INVALID_TEXT");
     payload.text = val;
-    if (action.type === "guest_message") payload.source = action.source === "ai" ? "ai" : "scripted";
-    if (action.type === "candidate_message" || action.type === "guest_message") payload.locale = ["de","tr","en"].includes(action.locale) ? action.locale : "de";
+    if (action.type === "guest_message" || action.type === "service_reply") payload.source = action.source === "ai" ? "ai" : "scripted";
+    if (action.type === "service_message" || action.type === "service_reply") payload.channel = action.channel;
+    if (["candidate_message","guest_message","service_message","service_reply"].includes(action.type)) payload.locale = ["de","tr","en"].includes(action.locale) ? action.locale : "de";
   }
-  const event = { id, sequence: session.events.length + 1, at: now, actor: role === "coach" ? "observer" : role === "guest" ? "guest" : "candidate", type: action.type, payload };
+  const event = { id, sequence: session.events.length + 1, at: now, actor: role === "coach" ? "observer" : role === "guest" ? "guest" : role === "service" ? "service" : "candidate", type: action.type, payload };
   const events=[...session.events,event];
   if (advanced && role === "candidate") {
     // Scenario interruptions are persisted and replayable, never browser-local timers.
