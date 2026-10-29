@@ -12,7 +12,7 @@ export function multitaskWorkspace(s) {
   return `<section class="panel multitask-workspace" id="service-queue">
     <div class="panel-top"><div><p class="eyebrow">LIVE SERVICE QUEUE / SITUATIONSÜBUNG</p><h2>Anreise & Telefon</h2></div><span class="tag ${m.pending?"live":"muted"}">${m.pending?"LIVE UNTERBRECHUNGEN":"SIMULATION"}</span></div>
     <div class="multitask-cards">
-      <article class="task-card ${m.checkinArrived&&!m.checkinResolved?"task-alert":""}">
+      <article id="checkin-task" class="task-card ${m.checkinArrived&&!m.checkinResolved?"task-alert":""}">
         <div class="task-label"><span>01 / FRONT DESK</span><span>${!m.checkinArrived?"KOMMT GLEICH":m.checkinResolved?"ERLEDIGT":"GAST WARTET"}</span></div>
         <h3>${m.checkinArrived?"Sofia Demir · Check-in":"Nächste Anreise"}</h3>
         <p>${m.checkinArrived?"Ein Gast erscheint mit Reservierung CK-311. Zimmer 311 darf erst zugeteilt werden, wenn das Housekeeping es freigibt.":"Ein weiterer Gast kommt im Verlauf der laufenden Reklamation an den Empfang."}</p>
@@ -24,7 +24,7 @@ export function multitaskWorkspace(s) {
           ${button("promise_room","Zimmer sofort zusagen (riskant)",!m.roomPromised,false,true)}
         </div>`:""}
       </article>
-      <article class="task-card ${m.phoneRinging&&!m.phoneAnswered?"task-alert":""}">
+      <article id="phone-task" class="task-card ${m.phoneRinging&&!m.phoneAnswered?"task-alert":""}">
         <div class="task-label"><span>02 / TELEFON</span><span>${!m.phoneRinging?"NOCH RUHIG":m.phoneAnswered?"BEARBEITET":"ANRUF AKTIV"}</span></div>
         <h3>${m.phoneRinging?"Housekeeping ruft an":"Interne Rückmeldung"}</h3>
         <p>${m.phoneAnswered?"Housekeeping bestätigt: Zimmer 311 ist noch nicht freigegeben. Eine verbindliche Fertigstellungszeit liegt nicht vor.":m.phoneRinging?"Ein Anruf unterbricht die Arbeit. Koordinieren Sie das Telefon und den wartenden Gast.":"Der nächste Arbeitsstrang wird nach weiteren Aktionen aktiviert."}</p>

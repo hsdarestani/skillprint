@@ -1,6 +1,7 @@
 import { SCENARIO, ACTION_LABELS, appendAction, newSession, deriveState, evaluate } from "./engine.js";
 import { OPENING, fallbackGuest, normalizeLocale } from "./guest.js";
 import { multitaskBanner, multitaskWorkspace, multitaskControl, multitaskReport } from "./multitask-ui.js";
+import { missionProgress, missionDock, invoiceActionStates } from "./mission-ui.js";
 
 const root = document.getElementById("app");
 // The deployed, healthy demo Worker URL is set in public/config.js; it is a safe
@@ -242,33 +243,29 @@ function candidateView() {
   if (!snapshot) return loading();
   if (snapshot.role !== "candidate") return denied("Für die Aufgabenansicht wird der separate Kandidatenlink benötigt.");
   const s = snapshot.state;
-  const done = ["asked","verified","opened","compared","corrected","replied"].filter(k=>s[k]).length;
-  const actions = [
-    { type:"verify_identity",label:"Identität prüfen (Demo)",disabled:s.verified },
-    { type:"open_invoice",label:"Rechnung öffnen",disabled:s.opened },
-    { type:"compare_items",label:"Positionen vergleichen",disabled:!s.opened||s.compared },
-  ];
+  const actions = invoiceActionStates(s);
   return `<div class="candidate-page">
     <div class="page-heading"><div><p class="eyebrow">ASSESSMENT / FRONT OFFICE AGENT</p><h1>Ihr praktischer Arbeitstest</h1><p>Ein simuliertes Gästegespräch mit einer fehlerhaften Rechnung. Arbeiten Sie so, wie Sie es im Hotel tun würden.</p></div>${tag(snapshot.status==="completed"?"ABSCHLOSS ERFOLGT":"SIMULATION LÄUFT",snapshot.status==="completed"?"connected":"live")}</div>
-    <div class="candidate-progress"><div class="progress-top"><b>Fortschritt</b><span>${done} / 6 Schritte</span></div><div class="progress-track"><span style="width:${done/6*100}%"></span></div></div>
+    ${missionProgress(snapshot.events,snapshot.mode)}
     ${snapshot.mode==="multitask"?multitaskBanner(s):""}
     <div class="candidate-grid">
       <div class="candidate-main">
-        <section class="panel client-conversation"><div class="panel-top"><div><p class="eyebrow">01 / GÄSTEKONTAKT</p><h2>Nachricht von Lena Weber</h2></div><span class="avatar">LW</span></div>
+        <section class="panel client-conversation" id="guest-contact"><div class="panel-top"><div><p class="eyebrow">01 / GÄSTEKONTAKT</p><h2>Nachricht von Lena Weber</h2></div><span class="avatar">LW</span></div>
           ${guestChatPanel(snapshot.events,s)}
-          <div class="action-grid">${actions.map(a=>`<button class="action-tile ${a.disabled?"is-done":""}" data-step="${a.type}" ${a.disabled?"disabled":""}><span>${a.disabled?"✓":"＋"}</span>${a.label}</button>`).join("")}</div>
+          <div class="action-grid">${actions.map(a=>`<button class="action-tile ${a.done?"is-done":a.disabled?"is-blocked":""}" data-step="${a.type}" ${a.disabled?"disabled":""}><span>${a.done?"✓":a.disabled?"·":"＋"}</span>${a.label}</button>`).join("")}</div>
         </section>
         ${snapshot.mode==="multitask"?multitaskWorkspace(s):""}
-        <section class="panel"><div class="panel-top"><div><p class="eyebrow">02 / RECHNUNG</p><h2>Rechnungsprüfung</h2></div>${tag(s.corrected?"KORRIGIERT":s.opened?"IN BEARBEITUNG":"GESCHÜTZT",s.corrected?"connected":"muted")}</div>
+        <section class="panel" id="invoice-work"><div class="panel-top"><div><p class="eyebrow">02 / RECHNUNG</p><h2>Rechnungsprüfung</h2></div>${tag(s.corrected?"KORRIGIERT":s.opened?"IN BEARBEITUNG":"GESCHÜTZT",s.corrected?"connected":"muted")}</div>
           ${s.opened ? `<div class="invoice"><div class="invoice-top"><b>HOTEL AURORA</b><span>RECHNUNG / ${SCENARIO.booking}</span></div><div class="invoice-row"><span>Übernachtung</span><b>180,00 €</b></div><div class="invoice-row"><span>Frühstück</span><b>20,00 €</b></div><div class="invoice-row ${s.compared?"flagged":""}"><span>Frühstück (erneut)</span><b>20,00 €</b></div><div class="invoice-row"><span>Servicepauschale</span><b>20,00 €</b></div><div class="invoice-total"><span>Rechnungsbetrag ${s.corrected?"(korrigiert)":""}</span><strong>${euro(s.corrected?SCENARIO.correct:SCENARIO.billed)}</strong></div></div>` : `<div class="locked"><div class="locked-icon">⌑</div><h3>Rechnung noch geschlossen</h3><p>Prüfen Sie zuerst die Identität, bevor Sie personenbezogene Rechnungsdaten ansehen. Die Demo protokolliert auch abweichende Entscheidungen.</p></div>`}
           <div class="input-row"><label for="amount">Korrigierten Gesamtbetrag eingeben</label><div class="amount-line"><input id="amount" type="number" step="0.01" min="0" placeholder="z. B. 220.00" ${!s.compared||s.replied?"disabled":""}/><button class="secondary" data-step="correct_invoice" ${!s.compared||s.replied?"disabled":""}>Korrektur speichern</button></div><small>Nur die fachlich korrekte Änderung wird in der Rubrik berücksichtigt.</small></div>
         </section>
-        <section class="panel"><div class="panel-top"><div><p class="eyebrow">03 / ABSCHLUSS</p><h2>Antwort an den Gast</h2></div></div>
+        <section class="panel" id="reply-work"><div class="panel-top"><div><p class="eyebrow">03 / ABSCHLUSS</p><h2>Antwort an den Gast</h2></div></div>
           ${s.replied ? `<div class="completed-reply">${icon("check")} <p>${safe(s.replyText)}</p></div>` : `<label class="field-label" for="guest-reply">Dokumentierte Antwort</label><textarea id="guest-reply" rows="4" placeholder="Guten Tag Frau Weber, ich habe Ihre Rechnung geprüft ..."></textarea><div class="form-actions"><button class="outline" data-step="escalate">Fachlich eskalieren</button><button class="primary" data-step="submit_reply" ${!s.opened?"disabled":""}>Antwort abgeben ${icon("arrow")}</button></div>`}
         </section>
       </div>
       <aside class="candidate-rail"><div class="rail-card"><p class="eyebrow">IHRE ARBEITSSITUATION</p><h3>Front Office / Morgenservice</h3><p>Ein Gast reklamiert eine Rechnung. Hinterfragen Sie den Sachverhalt, prüfen Sie die Dokumente und dokumentieren Sie Ihre Lösung.</p><div class="rail-divider"></div><div class="rail-stat"><span>Buchungsreferenz</span><b>${SCENARIO.booking}</b></div><div class="rail-stat"><span>Zimmer</span><b>${SCENARIO.room}</b></div><div class="rail-stat"><span>Anspruch</span><b>Fachlich korrekt handeln</b></div></div><div class="privacy-note">${icon("shield")} <p>Nur Aktionen innerhalb dieses Tests werden erfasst. Keine Kamera, kein Mikrofon, keine Analyse von Emotionen oder persönlichen Eigenschaften.</p></div>${snapshot.status==="completed" ? `<div class="success-rail"><b>Test beendet</b><p>Ihre Antwort wurde gespeichert. Ein Mensch prüft die Ergebnisse.</p></div>` : ""}</aside>
     </div>
+    ${missionDock(snapshot.events,snapshot.mode)}
   </div>`;
 }
 function eventLine(e, interactive = false) {
@@ -286,8 +283,9 @@ function control() {
   if (!snapshot) return loading();
   if (snapshot.role !== "coach") return denied("Dieser Bereich ist nur über einen autorisierten Beobachterlink erreichbar.");
   const s = snapshot.state, report = snapshot.report;
+  const scoringReady = snapshot.status === "completed";
   return `<div class="control-page"><div class="page-heading"><div><p class="eyebrow">LIVE ASSESSMENT / ${safe(snapshot.id)}</p><h1>Control Room <span class="title-outline">/ 01</span></h1><p>Beobachten Sie Arbeitsschritte, dokumentieren Sie Fakten und springen Sie anschließend direkt zum Beleg.</p></div><div class="heading-controls">${tag(snapshot.status==="completed"?"SESSION COMPLETED":"SESSION RUNNING",snapshot.status==="completed"?"connected":"live")}<button class="outline" data-action="copy-candidate">${icon("link")} Kandidatenlink</button></div></div>
-    <div class="metrics-row"><div class="metric"><span>LIVE EREIGNISSE</span><strong>${snapshot.events.length.toString().padStart(2,"0")}</strong><small>Zeitgestempelte Actions</small></div><div class="metric"><span>VORLÄUFIGE RUBRIK</span><strong>${report.total}<small> / 100</small></strong><small>Kein Erfolgsprozentsatz</small></div><div class="metric"><span>BEOBACHTERSTATUS</span><strong class="metric-word">Verbunden</strong><small>Rollenbasierter Zugriff</small></div><div class="metric"><span>REPORTSTATUS</span><strong class="metric-word">${snapshot.reviewStatus==="approved"?"Geprüft":"Offen"}</strong><small>Human Review erforderlich</small></div></div>
+    <div class="metrics-row"><div class="metric"><span>LIVE EREIGNISSE</span><strong>${snapshot.events.length.toString().padStart(2,"0")}</strong><small>Zeitgestempelte Actions</small></div><div class="metric"><span>ARBEITSPROBE / DEMO</span><strong>${scoringReady?report.total:"—"}${scoringReady?"<small> / 100</small>":""}</strong><small>${scoringReady?"Nicht validierter Übungswert":"Bewertung nach Abschluss"}</small></div><div class="metric"><span>BEOBACHTERSTATUS</span><strong class="metric-word">Verbunden</strong><small>Rollenbasierter Zugriff</small></div><div class="metric"><span>REPORTSTATUS</span><strong class="metric-word">${snapshot.reviewStatus==="approved"?"Geprüft":"Offen"}</strong><small>Human Review erforderlich</small></div></div>
     <div class="control-grid"><section class="panel primary-panel"><div class="panel-top"><div><p class="eyebrow">A / SYNCHRONISIERTE TESTANSICHT</p><h2>Candidate workspace</h2></div><span class="stream-indicator"><i></i> ${REMOTE?"REMOTE STREAM":"LOCAL EVENT MIRROR"}</span></div>${mirror(s)}</section>
       <aside class="panel evidence-panel"><div class="panel-top"><div><p class="eyebrow">B / LIVE EVENT STREAM</p><h2>Timeline</h2></div><span class="event-counter">${snapshot.events.length} EVENTS</span></div><div class="event-list">${snapshot.events.length?snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join(""):`<div class="empty-events"><div>◎</div><b>Warten auf die erste Aktion</b><p>Öffnen Sie den Kandidatenlink auf einem zweiten Gerät und starten Sie den Test.</p></div>`}</div></aside>
     </div>
@@ -332,8 +330,12 @@ function draw() {
   }
 }
 async function onClick(event) {
-  const element = event.target.closest("[data-action], [data-step], [data-evidence]");
+  const element = event.target.closest("[data-action], [data-step], [data-evidence], [data-scroll-to]");
   if (!element) return;
+  if (element.dataset.scrollTo) {
+    document.getElementById(element.dataset.scrollTo)?.scrollIntoView({behavior:window.matchMedia?.("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"});
+    return;
+  }
   if (element.dataset.evidence) {
     chosenEvidence = element.dataset.evidence;
     draw();

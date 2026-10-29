@@ -77,16 +77,27 @@ export function evaluateMultitask(events = []) {
   ].map(x=>({...x,weighted:x.points/2*x.weight}));
   return {criteria:items,total:items.reduce((n,x)=>n+x.weighted,0),status:s.checkinResolved&&s.phoneAnswered?"complete":"in_progress",disclaimer:"Illustrative Entscheidungsrubrik; keine validierte Eignungsdiagnostik. Zeitdruck und Priorisierung müssen fachlich geprüft werden."};
 }
+// Conservative evidence gate for this *illustrative* hotel task only.
+// Acknowledgements ("yes", "no sorry") are not evidence of clarifying a bill.
+// This lexical heuristic is not a psychometric or language-proficiency model.
+export function isRelevantClarification(value = "") {
+  const text=String(value).trim().toLocaleLowerCase("en");
+  if(text.length<14) return false;
+  const relevant=/(rechn|frühstück|betrag|gebühr|preis|buchung|überzahl|beschwerd|bill|invoice|charge|charg|breakfast|paid|payment|amount|total|overcharg|complaint|reservation|fatura|ücret|kahvaltı|ödeme|tutar|rezerv|şikayet|sorun)/i.test(text);
+  const enquiry=/(\?|warum|wieso|wie |was |welch|können sie|könnten sie|erklären|beschreib|woran|why|what|which|how |could you|can you|would you|please explain|tell me|describe|neden|nasıl|hangi|nedir|açıklar|söyler|kontrol ed|bakabilir)/i.test(text);
+  return relevant && enquiry;
+}
 export function deriveState(events = []) {
   const candidate = events.filter(e => e.actor === "candidate");
   const find = type => candidate.find(e => e.type === type);
+  const clarification = candidate.filter(e => e.type === "candidate_message" && isRelevantClarification(e.payload?.text));
   const verified = find("verify_identity");
   const opened = find("open_invoice");
   const compared = find("compare_items");
   const corrected = candidate.find(e => e.type === "correct_invoice" && Number(e.payload?.amount) === SCENARIO.correct);
   const reply = find("submit_reply");
   return {
-    asked: Boolean(find("ask_guest") || candidate.some(e => e.type === "candidate_message")),
+    asked: Boolean(find("ask_guest") || clarification.length),
     guestMessages: events.filter(e => e.actor === "guest" && e.type === "guest_message").length,
     candidateMessages: candidate.filter(e => e.type === "candidate_message").length,
     guestReply: events.filter(e => e.actor === "guest" && e.type === "guest_message").at(-1)?.payload?.text || "",
@@ -102,13 +113,42 @@ export function deriveState(events = []) {
     multitask: deriveMultitask(events),
   };
 }
+// Progress is a navigation aid, not a validated candidate competency score.
+// Optional actions (hold, escalate, risk choice) do not artificially change completion.
+export function journeyProgress(events = [], mode = "classic") {
+  const state = deriveState(events);
+  const invoiceKeys = ["asked","verified","opened","compared","corrected","replied"];
+  const arrived = ["checkinWelcomed","checkinVerified","roomWaiting","checkinResolved"];
+  const invoiceDone = invoiceKeys.filter(key => state[key]).length;
+  const multi = state.multitask;
+  const checkinDone = arrived.filter(key => multi[key]).length;
+  const phoneDone = Number(multi.phoneAnswered);
+  const advanced = mode === "multitask";
+  const segments = [
+    {id:"guest-contact",key:"guest",label:"Gast",done:Number(state.asked),total:1},
+    {id:"invoice-work",key:"invoice",label:"Rechnung",done:invoiceDone,total:6},
+    ...(advanced ? [
+      {id:"checkin-task",key:"checkin",label:"Check-in",done:checkinDone,total:4,active:multi.checkinArrived && !multi.checkinResolved},
+      {id:"phone-task",key:"phone",label:"Telefon",done:phoneDone,total:1,active:multi.phoneRinging && !multi.phoneAnswered},
+    ] : []),
+  ];
+  const total = advanced ? 11 : 6;
+  const done = invoiceDone + (advanced ? checkinDone + phoneDone : 0);
+  return {
+    done,total,
+    percentage:Math.round(done/total*100),
+    segments,
+    pendingInterruptions:advanced ? multi.pending : 0,
+    completed:done === total,
+  };
+}
 export function evaluate(events = [], mode = "classic") {
   const state = deriveState(events);
   const candidate = events.filter(e => e.actor === "candidate");
   const relevant = types => candidate.filter(e => types.includes(e.type)).map(e => e.id);
   const reply = candidate.find(e => e.type === "submit_reply");
   const criteria = [
-    { id: "clarification", points: state.asked ? 2 : state.replied ? 1 : 0, evidence: relevant(["ask_guest", "candidate_message", "submit_reply"]), reason: state.asked ? "Das Anliegen wurde aktiv geklärt." : "Keine dokumentierte fachliche Rückfrage." },
+    { id: "clarification", points: state.asked ? 2 : 0, evidence: candidate.filter(e => e.type === "ask_guest" || (e.type === "candidate_message" && isRelevantClarification(e.payload?.text))).map(e=>e.id), reason: state.asked ? "Eine auf die Rechnung bezogene Rückfrage ist dokumentiert; die Angemessenheit ist manuell zu prüfen." : "Noch keine belegte, rechnungsbezogene Rückfrage; Bestätigungen zählen nicht als Klärung." },
     { id: "privacy", points: state.privacyBreach ? 0 : state.verified ? 2 : 0, evidence: relevant(["verify_identity", "open_invoice"]), reason: state.privacyBreach ? "Die Rechnung wurde vor der Identitätsprüfung geöffnet." : state.verified ? "Identität vor Datenzugriff geprüft." : "Identitätsprüfung nicht dokumentiert." },
     { id: "solution", points: state.corrected && state.compared ? 2 : state.compared ? 1 : 0, evidence: relevant(["open_invoice", "compare_items", "correct_invoice"]), reason: state.corrected ? "Doppelte Frühstücksposition korrigiert; Gesamtbetrag 220 EUR." : "Die sachlich korrekte Rechnungskorrektur fehlt." },
     { id: "documentation", points: (reply?.payload?.text?.length || 0) >= 45 ? 2 : state.replied ? 1 : 0, evidence: relevant(["submit_reply"]), reason: state.replied ? "Eine Antwort wurde dokumentiert; Vollständigkeit ist fachlich nachzuprüfen." : "Es liegt keine dokumentierte Kundenantwort vor." },

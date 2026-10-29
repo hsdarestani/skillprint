@@ -51,3 +51,38 @@
 .multitask-review-grid .criterion-header h3{font-size:15px}
 @media(max-width:850px){.multitask-cards,.multitask-review-grid{grid-template-columns:1fr}.task-card p{min-height:auto}}
 @media(max-width:540px){.multi-banner{padding:20px;align-items:flex-start;flex-direction:column}.multi-metrics{width:100%;text-align:left}.multi-metrics b{display:inline-block;margin-right:10px}.multitask-status-grid{grid-template-columns:1fr}}
+
+/* Sprint 2 mobile QA: task visibility, honest progress, persistent navigation */
+.mission-progress{padding:18px 22px}
+.mission-progress-note{display:flex;align-items:center;gap:7px;font-size:11px;color:#a3bac6;line-height:1.5;margin:12px 0 0}
+.mission-priority-dot{width:8px;height:8px;flex:none;background:#d9ad70;border-radius:50%;box-shadow:0 0 0 4px #d9ad7025}
+.candidate-page:has(.mission-dock){padding-bottom:104px}
+.mission-dock{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:30;display:flex;align-items:stretch;justify-content:space-between;width:min(calc(100% - 24px),620px);min-height:63px;background:#12283af5;border:1px solid #426077;box-shadow:0 10px 35px #000c,0 0 0 1px #101b27;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:14px;padding:5px}
+.mission-tab{position:relative;min-width:0;flex:1;display:flex;flex-direction:column;gap:5px;align-items:center;justify-content:center;border:0;border-radius:10px;background:transparent;color:#d2e2ec;font-size:11px;font-weight:650;letter-spacing:.005em;padding:8px 4px}
+.mission-tab:hover,.mission-tab:focus-visible{background:#29445a;color:#fff}
+.mission-tab.mission-done{color:#6fe0c7}
+.mission-tab-icon{font-size:19px;line-height:1;position:relative}
+.mission-notification{position:absolute;width:7px;height:7px;top:-3px;right:-7px;background:#ffbf71;border-radius:50%;box-shadow:0 0 0 3px #283744}
+.candidate-page [id="guest-contact"],.candidate-page [id="invoice-work"],.candidate-page [id="checkin-task"],.candidate-page [id="phone-task"]{scroll-margin-top:24px}
+@media(max-width:830px){
+  .candidate-page .candidate-rail{order:unset}
+  .mission-dock{width:calc(100% - 18px);bottom:calc(6px + env(safe-area-inset-bottom,0px));min-height:58px}
+  .candidate-page:has(.mission-dock){padding-bottom:94px}
+  .candidate-page .privacy-note{margin-top:10px}
+  .candidate-grid .candidate-main{gap:14px}
+}
+@media(max-width:540px){
+  .candidate-page .page-heading{padding-bottom:16px}
+  .candidate-page .page-heading h1{font-size:29px}
+  .candidate-page .page-heading p:not(.eyebrow){font-size:12px}
+  .multi-banner{margin-bottom:16px}
+  .candidate-page .panel{padding:16px}
+  .multitask-workspace .task-card{padding:16px}
+  .multitask-workspace .task-card h3{font-size:18px}
+  .mission-progress{padding:17px}
+}
+@media print{.mission-dock{display:none!important}.candidate-page:has(.mission-dock){padding-bottom:0}}
+
+/* Prerequisite-blocked is not completed. */
+.action-tile.is-blocked{background:#11202e;border-color:#2b3d4c;color:#8597a5}
+.action-tile.is-blocked>span{color:#718a9b}
