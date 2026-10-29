@@ -4,6 +4,13 @@
 
 Sprint 0 vertical slice for the `SKILLPRINT LIVE — Entwickler-Pflichtenheft v1.0 (29.10.2026)`. This is a **working demonstrator**, not a validated employment assessment, certified AI system, or product suitable for real candidate information.
 
+## Mobile assessment improvements (Sprint 2 QA)
+
+- Mobile candidate UI has a compact persistent four-section navigator (guest, check-in, telephone, invoice) to avoid very long scrolling when interruptions arrive.
+- Assessment completion progress now includes **all three service tracks**: 6 invoice-related actions, 4 check-in actions and 1 phone answer; optional risk actions never inflate completion.
+- The initial hotel-task rubric only credits a **relevant clarifying question**, not generic acknowledgements such as "yes of course" or "no sorry". This is a conservative keyword-based demo rule, **not** scientifically validated automated language evaluation.
+- In the Control Room, final demo numeric totals are withheld until the session ends, because partially filled scores were being mistaken for candidate ability. Human review remains required.
+
 ## Sprint 2 — Advanced Hotel Front Desk
 
 Choose **Live Multitasking Demo starten** on the dashboard for an advanced session. The classic demo remains available for backward compatibility.
