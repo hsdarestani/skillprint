@@ -38,3 +38,7 @@ jobs:
           curl --fail --silent --show-error --retry 3 --retry-delay 2 "$DEPLOYMENT_URL/api/health"
           echo
           echo "Live API: $DEPLOYMENT_URL"
+      - name: Verify live AI hotel guest and event evidence
+        env:
+          SKILLPRINT_LIVE_API: ${{ steps.deploy.outputs.deployment-url }}
+        run: node scripts/live-ai-smoke.mjs
