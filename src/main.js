@@ -2,8 +2,9 @@ import "./style.css";
 import { SCENARIO, ACTION_LABELS, appendAction, newSession, deriveState, evaluate } from "./engine.js";
 
 const root = document.getElementById("app");
-const API = String(window.SKILLPRINT_API_BASE || "").replace(/\/$/, "");
+const API = String(import.meta.env.VITE_SKILLPRINT_API_BASE || window.SKILLPRINT_API_BASE || "").trim().replace(/\/$/, "");
 const REMOTE = Boolean(API);
+let apiHealth = REMOTE ? "checking" : "local";
 const STORE = "skillprint:sprint0:session:";
 const DETAILS = "skillprint:sprint0:active";
 let active = JSON.parse(sessionStorage.getItem(DETAILS) || "null");
@@ -138,7 +139,7 @@ function icon(name) {
 function header(r) {
   const coach = active?.id && active?.coachToken ? href("control",active.id,active.coachToken) : "#/dashboard";
   const report = active?.id && active?.coachToken ? href("report",active.id,active.coachToken) : "#/dashboard";
-  return `<header class="topbar"><a class="brand" href="#/dashboard" aria-label="SKILLPRINT LIVE"><span class="brand-mark">S<span class="brand-star">✦</span></span><span class="brand-name"><b>SKILLPRINT</b><span>LIVE</span></span></a><nav aria-label="Hauptnavigation"><a href="#/dashboard" class="${r.view==="dashboard"?"active":""}">Übersicht</a><a href="${coach}" class="${r.view==="control"?"active":""}">Control Room</a><a href="${report}" class="${r.view==="report"?"active":""}">Evidence Report</a></nav><span class="header-right">${tag(REMOTE?"CROSS-DEVICE LIVE":"LOKALE VORSCHAU",REMOTE?"connected":"muted")}</span></header>`;
+  return `<header class="topbar"><a class="brand" href="#/dashboard" aria-label="SKILLPRINT LIVE"><span class="brand-mark">S<span class="brand-star">✦</span></span><span class="brand-name"><b>SKILLPRINT</b><span>LIVE</span></span></a><nav aria-label="Hauptnavigation"><a href="#/dashboard" class="${r.view==="dashboard"?"active":""}">Übersicht</a><a href="${coach}" class="${r.view==="control"?"active":""}">Control Room</a><a href="${report}" class="${r.view==="report"?"active":""}">Evidence Report</a></nav><span class="header-right">${tag(!REMOTE?"LOKALE VORSCHAU":apiHealth==="online"?"BACKEND ONLINE":apiHealth==="checking"?"VERBINDUNG WIRD GEPRÜFT":"BACKEND OFFLINE",apiHealth==="online"?"connected":apiHealth==="offline"?"live":"muted")}</span></header>`;
 }
 function sidebar(r) {
   const selected = r.view;
@@ -246,7 +247,7 @@ function draw() {
   const r = current();
   let body = r.view === "dashboard" ? dashboard() : r.view === "candidate" ? candidateView() : r.view === "control" ? control() : r.view === "report" ? reportView() : denied("Unbekannter Bereich");
   const isCandidate = r.view === "candidate";
-  root.innerHTML = `${header(r)}<div class="app-grid">${isCandidate?"":sidebar(r)}<main class="${isCandidate?"full-width":""}">${notification?`<div class="notice" role="alert">${safe(notification)} <button data-action="dismiss">×</button></div>`:""}${body}${footer()}</main></div>`;
+  root.innerHTML = `${header(r)}<div class="app-grid">${isCandidate?"":sidebar(r)}<main class="${isCandidate?"full-width":""}">${apiHealth==="offline"?'<div class="notice" role="alert">Realtime-Backend nicht erreichbar. Bitte Cloudflare Worker prüfen.</div>':""}${notification?`<div class="notice" role="alert">${safe(notification)} <button data-action="dismiss">×</button></div>`:""}${body}${footer()}</main></div>`;
 }
 async function onClick(event) {
   const element = event.target.closest("[data-action], [data-step], [data-evidence]");
@@ -289,4 +290,14 @@ root.addEventListener("click",onClick);
 window.addEventListener("hashchange",navigate);
 window.addEventListener("storage",e=>{ if (e.key?.startsWith(STORE)) refresh(); });
 channel?.addEventListener("message",e=>{ if (e.data?.id===current().id) refresh(); });
+async function checkBackend() {
+  if (!REMOTE) return;
+  try {
+    const response = await fetch(API + "/api/health", { cache:"no-store" });
+    const data = await response.json();
+    apiHealth = response.ok && data.ok === true ? "online" : "offline";
+  } catch { apiHealth = "offline"; }
+  draw();
+}
 navigate();
+checkBackend();
