@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {newSession,appendAction,deriveState,evaluate,journeyProgress,isRelevantClarification} from "../src/engine.js";
-import {missionDock,missionProgress} from "../src/mission-ui.js";
+import {missionDock,missionProgress,invoiceActionStates} from "../src/mission-ui.js";
 const write=(session,type,other={})=>appendAction(session,{type,id:"test_"+(session.events.length+1).toString().padStart(5,"0"),...other},"candidate");
 test("short generic acknowledgements are NOT clarification evidence or premature 25 points",()=>{
   let s=newSession("sl-ux",new Date().toISOString(),"multitask");
@@ -54,4 +54,16 @@ test("classic mode still has six steps and no fixed multi-task bar",()=>{
  const s=newSession("sl-classic");
  assert.equal(journeyProgress(s.events,s.mode).total,6);
  assert.equal(missionDock(s.events,s.mode),"");
+});
+
+test("blocked invoice comparison is grey and incomplete, not a fake green checkmark",()=>{
+  const initial=invoiceActionStates({verified:false,opened:false,compared:false});
+  const compare=initial.find(x=>x.type==="compare_items");
+  assert.equal(compare.disabled,true);
+  assert.equal(compare.done,false);
+  const open=invoiceActionStates({verified:true,opened:true,compared:false});
+  assert.equal(open.find(x=>x.type==="open_invoice").done,true);
+  assert.equal(open.find(x=>x.type==="compare_items").disabled,false);
+  const compared=invoiceActionStates({verified:true,opened:true,compared:true});
+  assert.equal(compared.find(x=>x.type==="compare_items").done,true);
 });
