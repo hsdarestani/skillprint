@@ -13,7 +13,12 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
     const url = new URL(request.url);
     if (url.pathname === "/api/health") return json({ ok: true, name: "SKILLPRINT LIVE API", mode: "demo" });
+    const clientKey = request.headers.get("cf-connecting-ip") || "unknown-test-client";
     if (url.pathname === "/api/sessions" && request.method === "POST") {
+      if (env.RATE_CREATE) {
+        const {success} = await env.RATE_CREATE.limit({key:clientKey});
+        if (!success) return error("SESSION_RATE_LIMIT",429);
+      }
       const id = "sl-" + crypto.randomUUID().slice(0, 8);
       const tokens = { coachToken: randomToken(), candidateToken: randomToken() };
       const room = env.ROOMS.get(env.ROOMS.idFromName(id));
@@ -28,6 +33,10 @@ export default {
     if (!token || !/^[a-f0-9]{48}$/.test(token)) return error("UNAUTHORIZED", 401);
     const expectedMethod = { snapshot: "GET", action: "POST", chat: "POST", finalize: "POST", stream: "GET" }[method];
     if (request.method !== expectedMethod) return error("METHOD_NOT_ALLOWED", 405);
+    if (method === "chat" && env.RATE_CHAT) {
+      const {success} = await env.RATE_CHAT.limit({key:clientKey});
+      if (!success) return error("CHAT_RATE_LIMIT",429);
+    }
     const qs = new URLSearchParams({ token }).toString();
     const target = "https://room/" + method + "?" + qs;
     const room = env.ROOMS.get(env.ROOMS.idFromName(id));
