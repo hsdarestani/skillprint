@@ -38,15 +38,15 @@ export function multitaskWorkspace(s) {
     <p class="queue-notice">Alle Entscheidungen und Unterbrechungen werden als Ereignisse mit Zeitstempel für die manuelle Beurteilung gespeichert.</p>
   </section>`;
 }
-export function multitaskControl(s,report) {
+export function multitaskControl(s,report,finished=false) {
   const m=s.multitask;
   return `<section class="panel multi-control"><div class="panel-top"><div><p class="eyebrow accent">E / MULTITASK EVIDENCE</p><h2>Unterbrechungen & Prioritäten</h2></div><span class="tag ${report.status==="complete"?"connected":"live"}">${report.status==="complete"?"BEARBEITET":"IN ARBEIT"}</span></div>
     <div class="multitask-status-grid">
       <div><small>ANREISE</small><b>${!m.checkinArrived?"Nicht eingetroffen":m.checkinResolved?"Dokumentiert":"Gast wartet"}</b></div>
       <div><small>HOUSEKEEPING</small><b>${!m.phoneRinging?"Noch kein Anruf":m.phoneAnswered?"Zimmerstatus bekannt":"Anruf offen"}</b></div>
-      <div><small>ZUSATZRUBRIK (DEMO)</small><b>${report.total} / 100</b></div>
+      <div><small>ZUSATZRUBRIK (DEMO)</small><b>${finished?report.total+" / 100":"Nach Abschluss"}</b></div>
     </div>
-    <div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${c.title}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div>
+    ${finished?`<div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${c.title}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div>`:`<p class="fd-scoring-pending">Aufgaben und Entscheidungen werden live erfasst. Die illustrative Bewertung erscheint erst nach Abgabe der gesamten Arbeitsprobe.</p>`}
   </section>`;
 }
 export function multitaskReport(report) {
