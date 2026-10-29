@@ -32,7 +32,7 @@ In the Cloudflare Pages project `skillprint`, verify:
 - **Node version**: 22 (if a runtime version is explicitly selected)
 - **Latest production deployment**: should use the current `main` commit
 
-The app now has a static, dark startup screen: if a JavaScript entrypoint is missing or errors, it displays a diagnostic rather than an empty white page. A CI smoke check also verifies that generated HTML references real `dist/assets/*` files. The public demo Worker URL is embedded in `public/config.js` so an API environment variable is not required for this demo.
+The app now has a static, dark startup screen: if a JavaScript entrypoint is missing or errors, it displays a diagnostic rather than an empty white page. A CI smoke check also verifies that generated HTML references real `dist/assets/*` files. The public demo Worker URL is also a fallback in `src/main.js`; an API environment variable is not required for this demo. The HTML loads CSS directly and JS uses browser-native ES modules if the repository root is published accidentally. The correct Pages build output is still `dist`.
 
 If the project was originally deployed via **Direct Upload**, GitHub commits will not automatically redeploy it: build locally, upload the resulting `dist/` contents, or create a Git-connected Pages project.
 
@@ -108,7 +108,7 @@ src/style.css            Premium dark responsive design
 src/engine.js            Shared deterministic scenario / events / rubric rules
 worker/index.js          Cloudflare API + durable session room
 worker/wrangler.toml     SQLite Durable Object binding and migration
-public/config.js         Optional local fallback when the build-time API variable is not set
+public/config.js         Legacy public configuration; the current HTML uses Vite env or the source fallback
 .github/workflows/deploy-realtime-api.yml On-demand GitHub Action to deploy the Worker
 tests/engine.test.js     Domain logic and negative-path tests
 docs/ARCHITECTURE.md     Scope, data flow, caveats, roadmap
