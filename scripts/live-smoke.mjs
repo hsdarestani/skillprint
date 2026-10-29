@@ -64,7 +64,16 @@ const hasOldButton = scriptBody.includes("Neue Demo-Sitzung starten");
 console.log("DEPLOYED FRONTEND:",JSON.stringify({asset:mainURL.pathname,hasMultitask,hasOldButton,bytes:scriptBody.length}));
 assert.ok(hasMultitask, "STALE CLOUDFLARE PAGES DEPLOYMENT: live JS does NOT include Sprint 2 button. Redeploy latest main with build command npm run build and output dist.");
 console.log("PASS: deployed frontend includes Sprint 2 Multitasking UI");
-const hasFrontDeskStudio = scriptBody.includes("fd-cockpit") && scriptBody.includes("Ihr Arbeitsplatz.");
+let hasFrontDeskStudio = scriptBody.includes("fd-cockpit") && scriptBody.includes("Ihr Arbeitsplatz.");
+// In the current source-module Pages deployment, main.js IMPORTS a second
+// script. A built Vite bundle includes the studio inline; handle either format.
+if (!hasFrontDeskStudio && scriptBody.includes("frontdesk-studio.js")) {
+  const studioURL = new URL("./frontdesk-studio.js",mainURL);
+  const studioResponse = await fetch(studioURL,{signal:AbortSignal.timeout(20000)});
+  const studioContent = studioResponse.ok ? await studioResponse.text() : "";
+  hasFrontDeskStudio = studioResponse.ok && /javascript/i.test(studioResponse.headers.get("content-type")||"") &&
+    studioContent.includes("fd-cockpit") && studioContent.includes("Ihr Arbeitsplatz.");
+}
 console.log("FRONT DESK RELEASE:",JSON.stringify({hasFrontDeskStudio,main:mainURL.pathname}));
 assert.ok(hasFrontDeskStudio, "Cloudflare Pages still serves an older frontend without Sprint 3 Front Desk Studio.");
 console.log("PASS: public website serves the new integrated Front Desk Studio");
