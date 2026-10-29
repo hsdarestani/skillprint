@@ -101,6 +101,8 @@ export function appendAction(session, action, role, now = new Date().toISOString
     if (current.candidateMessages >= 12) throw new Error("CHAT_LIMIT_REACHED");
     if (current.candidateMessages > current.guestMessages) throw new Error("GUEST_REPLY_PENDING");
   }
+  if (role === "guest" && current.candidateMessages <= current.guestMessages) throw new Error("NO_CHAT_REQUEST");
+  if (role === "candidate" && action.type === "submit_reply" && current.candidateMessages > current.guestMessages) throw new Error("GUEST_REPLY_PENDING");
   if (action.type === "compare_items" && !current.opened) throw new Error("OPEN_INVOICE_FIRST");
   if (action.type === "correct_invoice" && !current.compared) throw new Error("COMPARE_INVOICE_FIRST");
   if (action.type === "submit_reply" && !current.opened) throw new Error("OPEN_INVOICE_FIRST");
