@@ -8,3 +8,6 @@ bindings = [{ name = "ROOMS", class_name = "AssessmentRoom" }]
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["AssessmentRoom"]
+
+[ai]
+binding = "AI"
