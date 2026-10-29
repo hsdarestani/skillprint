@@ -1,6 +1,13 @@
 name: Deploy SKILLPRINT Realtime API
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+      - "src/engine.js"
+      - "src/guest.js"
+      - ".github/workflows/deploy-realtime-api.yml"
 permissions:
   contents: read
 jobs:
