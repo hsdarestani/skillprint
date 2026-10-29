@@ -3,6 +3,7 @@ import { OPENING, fallbackGuest, normalizeLocale } from "./guest.js";
 import { multitaskBanner, multitaskWorkspace, multitaskControl, multitaskReport } from "./multitask-ui.js";
 import { missionProgress, missionDock, invoiceActionStates } from "./mission-ui.js";
 import { renderFrontDeskStudio, renderStudioObserver, studioActiveTab } from "./frontdesk-studio.js";
+import { scriptedServiceResponse } from "./service-dialogue.js";
 
 const root = document.getElementById("app");
 // The deployed, healthy demo Worker URL is set in public/config.js; it is a safe
@@ -20,6 +21,7 @@ let refreshId = 0;
 let notification = "";
 let guestLocale = normalizeLocale(sessionStorage.getItem("skillprint:guestLocale"));
 let chatBusy = false;
+let serviceBusy = false;
 let studioTab = "guest";
 let lastStudioSession = "";
 const studioDrafts = Object.create(null);
@@ -45,7 +47,7 @@ function localSnapshot(id, token) {
   const role = token === entry.coachToken ? "coach" : token === entry.candidateToken ? "candidate" : null;
   if (!role) throw Error("Sitzungslink ist ungültig.");
   const s = entry.session;
-  const events = role === "coach" ? s.events : s.events.filter(e => e.actor === "candidate" || e.actor === "guest" || e.actor === "system");
+  const events = role === "coach" ? s.events : s.events.filter(e => e.actor === "candidate" || e.actor === "guest" || e.actor === "system" || e.actor === "service");
   const base = { id, scenarioId:s.scenarioId, rubricVersion:s.rubricVersion, mode:s.mode||"classic", status:s.status, reviewStatus:s.reviewStatus, role, events, state:deriveState(events) };
   return role === "coach" ? { ...base, report:evaluate(s.events,s.mode) } : base;
 }
@@ -133,6 +135,38 @@ async function sendGuestChat(r, text) {
     studioDrafts["guest-chat"] = "";
   } finally {
     chatBusy = false;
+    draw();
+  }
+}
+async function sendServiceChat(r, channel, value) {
+  if(serviceBusy) return;
+  if(!["arrival","phone"].includes(channel)) throw Error("Unbekannte Gesprächssituation");
+  const text=String(value||"").trim();
+  if(text.length<3||text.length>500) throw Error("Bitte 3 bis 500 Zeichen eingeben.");
+  const id=crypto.randomUUID();
+  serviceBusy=true;
+  draw();
+  try {
+    if(REMOTE) {
+      const response=await fetch(API+"/api/sessions/"+encodeURIComponent(r.id)+"/service-chat?token="+encodeURIComponent(tokenFor(r)),{
+        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id,channel,text,locale:guestLocale}),
+      });
+      const result=await response.json();
+      if(!response.ok)throw Error(result.error||"Gespräch vorübergehend nicht verfügbar");
+      snapshot=result;
+    } else {
+      const entry=localEntry(r.id);
+      if(!entry || entry.candidateToken!==tokenFor(r)) throw Error("UNAUTHORIZED");
+      entry.session=appendAction(entry.session,{id,type:"service_message",text,channel,locale:guestLocale},"candidate");
+      const reply=scriptedServiceResponse(channel,guestLocale,deriveState(entry.session.events));
+      entry.session=appendAction(entry.session,{id:"service_"+id,type:"service_reply",text:reply,channel,locale:guestLocale,source:"scripted"},"service");
+      localStorage.setItem(STORE+r.id,JSON.stringify(entry));
+      window.dispatchEvent(new Event("skillprint-local-update"));
+      snapshot=localSnapshot(r.id,tokenFor(r));
+    }
+    studioDrafts["service-chat-"+channel]="";
+  } finally {
+    serviceBusy=false;
     draw();
   }
 }
@@ -258,6 +292,7 @@ function candidateView() {
     return renderFrontDeskStudio(snapshot,{
       activeTab:studioTab,
       renderChat:()=>guestChatPanel(snapshot.events,snapshot.state),
+      serviceLocale:guestLocale,serviceBusy,
       safe,euro,fmt
     });
   }
@@ -288,7 +323,7 @@ function candidateView() {
   </div>`;
 }
 function eventLine(e, interactive = false) {
-  const actor = e.actor === "candidate" ? "KANDIDAT" : e.actor === "guest" ? "KI-GAST" : e.actor === "system" ? "SITUATION" : "BEOBACHTER";
+  const actor = e.actor === "candidate" ? "KANDIDAT" : e.actor === "guest" ? "KI-GAST" : e.actor === "service" ? "SERVICE-ROLLE" : e.actor === "system" ? "SITUATION" : "BEOBACHTER";
   const detail = e.type === "correct_invoice" ? " · " + euro(e.payload.amount) : e.payload?.text ? " · " + safe(e.payload.text.slice(0,120)) : e.payload?.description ? " · " + safe(e.payload.description) : "";
   return `<${interactive?"button":"div"} class="timeline-event ${chosenEvidence===e.id?"highlight":""}" ${interactive?'data-evidence="'+safe(e.id)+'"':""}><span class="timeline-marker"></span><span class="event-time">${fmt(e.at)}</span><span class="event-label"><b>${safe(ACTION_LABELS[e.type] || e.type)}</b><small>${actor}${detail}</small></span></${interactive?"button":"div"}>`;
 }
@@ -335,7 +370,7 @@ function draw() {
   const isCandidate = r.view === "candidate";
   const editable = {};
   const focused = document.activeElement?.id;
-  for (const id of ["guest-chat","guest-reply","observer-note","amount"]) {
+  for (const id of ["guest-chat","guest-reply","observer-note","amount","service-chat-arrival","service-chat-phone"]) {
     const input = document.getElementById(id);
     if (input && "value" in input) {
       editable[id]=input.value;
@@ -378,6 +413,11 @@ async function onClick(event) {
     if (action === "chat") {
       await sendGuestChat(r,document.getElementById("guest-chat")?.value || "");return;
     }
+    if (action === "service-chat") {
+      const channel=element.dataset.channel;
+      await sendServiceChat(r,channel,document.getElementById("service-chat-"+channel)?.value||"");
+      return;
+    }
     if (action === "dismiss") { notification = ""; draw(); return; }
     if (action === "copy-candidate") {
       if (!active?.candidateToken) throw Error("Bitte zuerst eine Sitzung starten.");
@@ -406,10 +446,10 @@ async function onClick(event) {
 }
 root.addEventListener("click",onClick);
 root.addEventListener("input",e=>{
-  if (current().view==="candidate" && snapshot?.mode==="multitask" && ["guest-chat","guest-reply","amount"].includes(e.target?.id)) studioDrafts[e.target.id]=e.target.value;
+  if (current().view==="candidate" && snapshot?.mode==="multitask" && ["guest-chat","guest-reply","amount","service-chat-arrival","service-chat-phone"].includes(e.target?.id)) studioDrafts[e.target.id]=e.target.value;
 });
 root.addEventListener("change",e=>{
-  if(e.target?.id==="guest-locale"){
+  if(["guest-locale","service-locale"].includes(e.target?.id)){
     guestLocale=normalizeLocale(e.target.value);
     sessionStorage.setItem("skillprint:guestLocale",guestLocale);
     draw();
@@ -426,6 +466,10 @@ root.addEventListener("keydown",e=>{
     draw();
     root.querySelector(origin+" .fd-tab.fd-tab-active")?.focus();
     return;
+  }
+  if (["service-chat-arrival","service-chat-phone"].includes(e.target?.id) && e.key==="Enter" && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    root.querySelector('[data-action="service-chat"][data-channel="'+e.target.id.slice("service-chat-".length)+'"]')?.click();
   }
   if(e.target?.id==="guest-chat" && e.key==="Enter" && !e.shiftKey && !e.isComposing){
     e.preventDefault();
