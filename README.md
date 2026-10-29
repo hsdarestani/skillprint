@@ -4,6 +4,19 @@
 
 Sprint 0 vertical slice for the `SKILLPRINT LIVE — Entwickler-Pflichtenheft v1.0 (29.10.2026)`. This is a **working demonstrator**, not a validated employment assessment, certified AI system, or product suitable for real candidate information.
 
+## Sprint 1 — live multilingual guest conversation
+
+The Hotel Front Office candidate can now ask **free-text questions** in German, Turkish or English. Messages are sent to a Cloudflare Worker Durable Object where a **bounded Workers AI** roleplays fictional hotel guest Lena Weber with fixed invoice facts. Both candidate messages and guest replies become timestamped events visible to the employer and available in the Evidence Report.
+
+- `src/guest.js`: strict hotel facts, language instructions and deterministic scripted fallback if AI is offline, returns out-of-scope text or responds with restricted information.
+- `worker/index.js`: role-protected `POST /api/sessions/:id/chat`; saves message and guest response as separate events and broadcasts live; max 12 candidate messages per session.
+- `worker/wrangler.toml`: `[ai]` binding for Workers AI; basic Cloudflare location-based rate limit bindings for public session creation and AI messages. Limits are approximate; not enterprise anti-abuse protection.
+- `.github/workflows/deploy-realtime-api.yml`: new push-to-main auto-deploy for Worker changes; runs a live smoke test after deploy.
+- Candidate dialogue is free-text but the rest of the assessment still uses deterministic guided steps. AI does not generate scores, hiring recommendations, psychological assessments or candidate traits.
+- These are **three conversation languages**, not yet a completely translated multilingual app or scientifically validated multilingual test.
+
+**AI usage/cost:** Workers AI consumes AI quota and may incur usage charges under the linked Cloudflare account plan. Model calls only occur through the demo chat endpoint (never in a browser). The public demo is not appropriate for real applicant data or production hiring.
+
 ## What works now
 
 - Responsive German employer dashboard with one-click Hotel Front Office demo.
@@ -16,7 +29,7 @@ Sprint 0 vertical slice for the `SKILLPRINT LIVE — Entwickler-Pflichtenheft v1
 - Responsive and accessibility-conscious styling (keyboard focus, reduced motion, semantic headings); comprehensive WCAG testing still outstanding.
 - Automated engine tests and CI build workflow.
 
-**Not implemented yet:** generative AI customer (the current dialogue is scripted), identity verification of real individuals (the check is a simulation), cross-tenant management, real authentication/MFA, video/audio, actual multilingual scenario localization, independent assessment validity studies, automated ATS integrations, VR, legal/privacy clearance. These items are intentionally **not** simulated or advertised as live features.
+**Not implemented yet:** full synthetic voice customer (the current guest dialogue uses text and can fall back to scripted responses), identity verification of real individuals (the check is a simulation), cross-tenant management, real authentication/MFA, video/audio, actual multilingual scenario localization, independent assessment validity studies, automated ATS integrations, VR, legal/privacy clearance. These items are intentionally **not** simulated or advertised as live features.
 
 ## White-screen recovery for skillprint.pages.dev
 
