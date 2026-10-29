@@ -4,6 +4,19 @@
 
 Sprint 0 vertical slice for the `SKILLPRINT LIVE — Entwickler-Pflichtenheft v1.0 (29.10.2026)`. This is a **working demonstrator**, not a validated employment assessment, certified AI system, or product suitable for real candidate information.
 
+## Sprint 4 — natural-language arrival and internal phone dialogue
+
+The advanced Hotel Front Desk Studio now supports **three distinct text conversations**: invoice guest Lena Weber, arriving guest Sofia Demir and Housekeeping on the internal phone. Sofia and Housekeeping have separate, event-based conversation histories and consistent fictional scenario facts. The model can respond in **German, Turkish or English**; an explicitly labeled deterministic fallback keeps the demo usable during model outages.
+
+- **Candidate side:** in the **Check-in** or **Telefon** work area, type naturally and receive a context-specific reply. A maximum of six candidate messages is allowed per channel; back-to-back prompts before the corresponding reply are rejected.
+- **Employer side:** both sides of these conversations are timestamped and visible in the Control Room timeline and evidence report, alongside existing operational actions.
+- **Operational decisions are separate from AI dialogue:** hotel system buttons still explicitly confirm booking verification, phone handling, waiting-area offers and case completion. A language model does **not** convert a message into a scored action or make employment recommendations.
+- **Backend:** `POST /api/sessions/:id/service-chat` accepts a candidate capability token and `channel: "arrival" | "phone"`, validated locale and free-text message; persists both candidate message and generated (or scripted fallback) reply and notifies subscribed observers. The standard `/action` endpoint refuses forged service replies.
+- **Safety and costs:** all facts are synthetic; AI replies are bounded to room 311 not yet released, and no known completion time. Cloudflare Workers AI consumes quota and can incur charges. Per-IP throttling and per-session limits are demo controls, not enterprise-level identity or abuse protection.
+- **Limits:** text-only roleplay, not an actual telephone call or automatic speech recognizer; the overall interface is German with three conversation languages. No real candidate data, formal hiring assessments or independent validation.
+
+Run `npm test` and `node scripts/live-service-smoke.mjs` to validate the service conversation domain and published Worker.
+
 ## Sprint 3 — Front Desk Studio (interactive workspace)
 
 The **advanced** Hotel Front Office scenario is now a single operational reception workspace, rather than a long sequence of stacked cards.
