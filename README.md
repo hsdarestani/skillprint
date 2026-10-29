@@ -4,11 +4,11 @@
 
 Sprint 0 vertical slice for the `SKILLPRINT LIVE — Entwickler-Pflichtenheft v1.0 (29.10.2026)`. This is a **working demonstrator**, not a validated employment assessment, certified AI system, or product suitable for real candidate information.
 
-## Cloudflare Pages production release access
+## Cloudflare Pages release
 
-The Worker deployment and the Pages deployment use **different API permissions**. Worker release uses the existing `CLOUDFLARE_API_TOKEN` (which already works). Production site release requires a separate GitHub Actions secret named `CLOUDFLARE_PAGES_API_TOKEN` with **Account → Cloudflare Pages → Edit**, scoped to the Cloudflare account that owns `skillprint.pages.dev`. This is a free Cloudflare access token, not a paid add-on. Never paste the token into chat, source files, commits or logs.
+The existing **Cloudflare Pages Git integration** publishes the Front Desk Studio from `main`. The production verification workflow confirmed that `skillprint.pages.dev` serves the new Sofia and Housekeeping dialogue modules. The separate Workers API deployment continues to use its existing, functioning Cloudflare API Token.
 
-The workflow `.github/workflows/deploy-pages.yml` will install, test, build the `dist/` bundle and deploy it to the existing `skillprint` Pages project. After creating the secret, rerun the **Deploy SKILLPRINT Pages (Built)** workflow on `main`. Verify `skillprint.pages.dev` serves the Sprint 4 conversation modules. The existing Git-integrated build settings should also remain `npm run build` and `dist`; if the Git integration publishes raw sources again, change its build output settings or disable automatic Git production deployments to avoid competing release sources.
+For future builds, configure Pages to build with `npm run build` and serve `dist` (Vite output) to avoid the slower browser-native source fallback. No extra Pages API token is needed for the existing Git auto-deployment.
 
 ## Sprint 4 — natural-language arrival and internal phone dialogue
 
