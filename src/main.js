@@ -138,9 +138,9 @@ async function sendGuestChat(r, text) {
     draw();
   }
 }
-async function sendServiceChat(r, channel, value) {
+async function sendServiceChat(r, serviceChannel, value) {
   if(serviceBusy) return;
-  if(!["arrival","phone"].includes(channel)) throw Error("Unbekannte Gesprächssituation");
+  if(!["arrival","phone"].includes(serviceChannel)) throw Error("Unbekannte Gesprächssituation");
   const text=String(value||"").trim();
   if(text.length<3||text.length>500) throw Error("Bitte 3 bis 500 Zeichen eingeben.");
   const id=crypto.randomUUID();
@@ -149,7 +149,7 @@ async function sendServiceChat(r, channel, value) {
   try {
     if(REMOTE) {
       const response=await fetch(API+"/api/sessions/"+encodeURIComponent(r.id)+"/service-chat?token="+encodeURIComponent(tokenFor(r)),{
-        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id,channel,text,locale:guestLocale}),
+        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({id,channel:serviceChannel,text,locale:guestLocale}),
       });
       const result=await response.json();
       if(!response.ok)throw Error(result.error||"Gespräch vorübergehend nicht verfügbar");
@@ -157,14 +157,14 @@ async function sendServiceChat(r, channel, value) {
     } else {
       const entry=localEntry(r.id);
       if(!entry || entry.candidateToken!==tokenFor(r)) throw Error("UNAUTHORIZED");
-      entry.session=appendAction(entry.session,{id,type:"service_message",text,channel,locale:guestLocale},"candidate");
-      const reply=scriptedServiceResponse(channel,guestLocale,deriveState(entry.session.events));
+      entry.session=appendAction(entry.session,{id,type:"service_message",text,channel:serviceChannel,locale:guestLocale},"candidate");
+      const reply=scriptedServiceResponse(serviceChannel,guestLocale,deriveState(entry.session.events));
       entry.session=appendAction(entry.session,{id:"service_"+id,type:"service_reply",text:reply,channel,locale:guestLocale,source:"scripted"},"service");
       localStorage.setItem(STORE+r.id,JSON.stringify(entry));
-      window.dispatchEvent(new Event("skillprint-local-update"));
+      channel?.postMessage({id:r.id});
       snapshot=localSnapshot(r.id,tokenFor(r));
     }
-    studioDrafts["service-chat-"+channel]="";
+    studioDrafts["service-chat-"+serviceChannel]="";
   } finally {
     serviceBusy=false;
     draw();
