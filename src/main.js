@@ -1,4 +1,5 @@
 import { SCENARIO, ACTION_LABELS, appendAction, newSession, deriveState, evaluate } from "./engine.js";
+import { OPENING, fallbackGuest, normalizeLocale } from "./guest.js";
 
 const root = document.getElementById("app");
 // The deployed, healthy demo Worker URL is set in public/config.js; it is a safe
@@ -14,6 +15,8 @@ let chosenEvidence = null;
 let socket = null;
 let refreshId = 0;
 let notification = "";
+let guestLocale = normalizeLocale(sessionStorage.getItem("skillprint:guestLocale"));
+let chatBusy = false;
 const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("skillprint-demo") : null;
 const safe = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
 const fmt = at => at ? new Date(at).toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit", second:"2-digit" }) : "—";
@@ -36,7 +39,7 @@ function localSnapshot(id, token) {
   const role = token === entry.coachToken ? "coach" : token === entry.candidateToken ? "candidate" : null;
   if (!role) throw Error("Sitzungslink ist ungültig.");
   const s = entry.session;
-  const events = role === "coach" ? s.events : s.events.filter(e => e.actor === "candidate");
+  const events = role === "coach" ? s.events : s.events.filter(e => e.actor === "candidate" || e.actor === "guest");
   const base = { id, scenarioId:s.scenarioId, rubricVersion:s.rubricVersion, status:s.status, reviewStatus:s.reviewStatus, role, events, state:deriveState(events) };
   return role === "coach" ? { ...base, report:evaluate(s.events) } : base;
 }
@@ -90,6 +93,39 @@ async function sendAction(r, action, finalize = false) {
     snapshot = localSnapshot(r.id,token);
   }
   draw();
+}
+async function sendGuestChat(r, text) {
+  if (chatBusy) return;
+  if (!r.id || !tokenFor(r)) throw Error("Sitzungslink fehlt.");
+  const msg = String(text || "").trim();
+  if (msg.length < 3 || msg.length > 500) throw Error("Bitte 3 bis 500 Zeichen eingeben.");
+  const id = crypto.randomUUID();
+  chatBusy = true;
+  try {
+    if (REMOTE) {
+      const response = await fetch(API + "/api/sessions/" + encodeURIComponent(r.id) + "/chat?token=" + encodeURIComponent(tokenFor(r)), {
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({id,text:msg,locale:guestLocale}),
+      });
+      const result = await response.json();
+      if (!response.ok) throw Error(result.error || "Der simulierte Gast ist nicht erreichbar.");
+      snapshot = result;
+    } else {
+      const entry = localEntry(r.id);
+      if (!entry || tokenFor(r) !== entry.candidateToken) throw Error("UNAUTHORIZED");
+      entry.session = appendAction(entry.session,{id,type:"candidate_message",text:msg,locale:guestLocale},"candidate");
+      const reply = fallbackGuest(msg,guestLocale,deriveState(entry.session.events));
+      entry.session = appendAction(entry.session,{id:"guest_"+id,type:"guest_message",text:reply,locale:guestLocale,source:"scripted"},"guest");
+      localStorage.setItem(STORE + r.id, JSON.stringify(entry));
+      channel?.postMessage({id:r.id});
+      snapshot = localSnapshot(r.id,tokenFor(r));
+    }
+    const field = document.getElementById("guest-chat");
+    if (field) field.value = "";
+  } finally {
+    chatBusy = false;
+    draw();
+  }
 }
 function connect(r) {
   if (socket) { socket.close(); socket = null; }
@@ -171,7 +207,35 @@ function dashboard() {
   </div>`;
 }
 function guestMessage(state) {
-  return state.asked ? "Ich hatte nur einmal Frühstück. Können Sie bitte prüfen, warum es zweimal berechnet wurde? Meine Reservierung lautet HT-2048." : "Guten Tag, auf meiner Hotelrechnung stimmt etwas nicht. Ich glaube, mir wurde zu viel berechnet.";
+  return state.guestReply || (state.asked ? "Ich habe nur einmal gefrühstückt. Bitte prüfen Sie die doppelte Berechnung." : OPENING.de);
+}
+function guestChatPanel(events, state) {
+  const items = [
+    {actor:"guest",payload:{text:OPENING[guestLocale],source:"scripted"}},
+    ...events.filter(e => e.type === "candidate_message" || e.type === "guest_message"),
+  ];
+  const pending = state.candidateMessages > state.guestMessages;
+  return `<div class="dialogue-toolbar">
+    <div><span class="dialogue-live"><i></i> LIVE ROLEPLAY</span><span class="dialogue-identity">Lena Weber · Hotelgast</span></div>
+    <label for="guest-locale">Gesprächssprache</label>
+    <select id="guest-locale" aria-label="Gesprächssprache auswählen">
+      <option value="de" ${guestLocale==="de"?"selected":""}>Deutsch</option>
+      <option value="tr" ${guestLocale==="tr"?"selected":""}>Türkçe</option>
+      <option value="en" ${guestLocale==="en"?"selected":""}>English</option>
+    </select>
+  </div>
+  <div class="dialogue-messages" role="log" aria-label="Gesprächsverlauf" aria-live="polite">
+    ${items.map(e => `<div class="dialogue-bubble ${e.actor==="guest"?"guest":"candidate"}">
+      <span>${e.actor==="guest"?"LENA WEBER":"SIE"} ${e.payload?.source==="scripted"?"· REGELBASIERT":e.payload?.source==="ai"?"· AI":""}</span>
+      <p>${safe(e.payload?.text)}</p>
+    </div>`).join("")}
+    ${pending?`<div class="dialogue-bubble guest"><span>LENA WEBER</span><p>Antwort wird vorbereitet …</p></div>`:""}
+  </div>
+  <div class="chat-composer"><label class="field-label" for="guest-chat">Antwort oder Rückfrage an den Gast</label>
+    <textarea id="guest-chat" maxlength="500" rows="2" placeholder="Guten Tag Frau Weber, was stimmt an der Rechnung nicht?" ${state.replied || state.candidateMessages>=12 || pending || chatBusy?"disabled":""}></textarea>
+    <div class="chat-actions"><small>Max. 12 Nachrichten · KI-Antworten werden nicht als Eignungsurteil bewertet</small>
+    <button class="secondary" data-action="chat" ${state.replied || state.candidateMessages>=12 || pending || chatBusy?"disabled":""}>Nachricht senden ${icon("arrow")}</button></div>
+  </div>`;
 }
 function candidateView() {
   if (!snapshot) return loading();
@@ -179,7 +243,6 @@ function candidateView() {
   const s = snapshot.state;
   const done = ["asked","verified","opened","compared","corrected","replied"].filter(k=>s[k]).length;
   const actions = [
-    { type:"ask_guest",label:"Rückfrage stellen",disabled:s.asked },
     { type:"verify_identity",label:"Identität prüfen (Demo)",disabled:s.verified },
     { type:"open_invoice",label:"Rechnung öffnen",disabled:s.opened },
     { type:"compare_items",label:"Positionen vergleichen",disabled:!s.opened||s.compared },
@@ -190,7 +253,7 @@ function candidateView() {
     <div class="candidate-grid">
       <div class="candidate-main">
         <section class="panel client-conversation"><div class="panel-top"><div><p class="eyebrow">01 / GÄSTEKONTAKT</p><h2>Nachricht von Lena Weber</h2></div><span class="avatar">LW</span></div>
-          <div class="speech"><span class="speaker">GAST · FRONT DESK</span><p>${safe(guestMessage(s))}</p></div>
+          ${guestChatPanel(snapshot.events,s)}
           <div class="action-grid">${actions.map(a=>`<button class="action-tile ${a.disabled?"is-done":""}" data-step="${a.type}" ${a.disabled?"disabled":""}><span>${a.disabled?"✓":"＋"}</span>${a.label}</button>`).join("")}</div>
         </section>
         <section class="panel"><div class="panel-top"><div><p class="eyebrow">02 / RECHNUNG</p><h2>Rechnungsprüfung</h2></div>${tag(s.corrected?"KORRIGIERT":s.opened?"IN BEARBEITUNG":"GESCHÜTZT",s.corrected?"connected":"muted")}</div>
@@ -206,8 +269,8 @@ function candidateView() {
   </div>`;
 }
 function eventLine(e, interactive = false) {
-  const actor = e.actor === "candidate" ? "KANDIDAT" : "BEOBACHTER";
-  const detail = e.type === "correct_invoice" ? " · " + euro(e.payload.amount) : e.payload?.text ? " · " + safe(e.payload.text.slice(0,68)) : "";
+  const actor = e.actor === "candidate" ? "KANDIDAT" : e.actor === "guest" ? "KI-GAST" : "BEOBACHTER";
+  const detail = e.type === "correct_invoice" ? " · " + euro(e.payload.amount) : e.payload?.text ? " · " + safe(e.payload.text.slice(0,120)) : "";
   return `<${interactive?"button":"div"} class="timeline-event ${chosenEvidence===e.id?"highlight":""}" ${interactive?'data-evidence="'+safe(e.id)+'"':""}><span class="timeline-marker"></span><span class="event-time">${fmt(e.at)}</span><span class="event-label"><b>${safe(ACTION_LABELS[e.type] || e.type)}</b><small>${actor}${detail}</small></span></${interactive?"button":"div"}>`;
 }
 function mirror(s) {
@@ -248,7 +311,20 @@ function draw() {
   const r = current();
   let body = r.view === "dashboard" ? dashboard() : r.view === "candidate" ? candidateView() : r.view === "control" ? control() : r.view === "report" ? reportView() : denied("Unbekannter Bereich");
   const isCandidate = r.view === "candidate";
+  const editable = {};
+  const focused = document.activeElement?.id;
+  for (const id of ["guest-chat","guest-reply","observer-note","amount"]) {
+    const input = document.getElementById(id);
+    if (input && "value" in input) editable[id]=input.value;
+  }
   root.innerHTML = `${header(r)}<div class="app-grid">${isCandidate?"":sidebar(r)}<main class="${isCandidate?"full-width":""}">${apiHealth==="offline"?'<div class="notice" role="alert">Realtime-Backend nicht erreichbar. Bitte Cloudflare Worker prüfen.</div>':""}${notification?`<div class="notice" role="alert">${safe(notification)} <button data-action="dismiss">×</button></div>`:""}${body}${footer()}</main></div>`;
+  for (const [id,value] of Object.entries(editable)) {
+    const input = document.getElementById(id);
+    if (input && !input.disabled) input.value=value;
+  }
+  if (focused && document.getElementById(focused) && editable[focused] !== undefined) {
+    document.getElementById(focused).focus({preventScroll:true});
+  }
 }
 async function onClick(event) {
   const element = event.target.closest("[data-action], [data-step], [data-evidence]");
@@ -264,6 +340,9 @@ async function onClick(event) {
   try {
     notification = "";
     if (action === "create") { element.disabled = true; await startSession(); return; }
+    if (action === "chat") {
+      await sendGuestChat(r,document.getElementById("guest-chat")?.value || "");return;
+    }
     if (action === "dismiss") { notification = ""; draw(); return; }
     if (action === "copy-candidate") {
       if (!active?.candidateToken) throw Error("Bitte zuerst eine Sitzung starten.");
@@ -288,6 +367,19 @@ async function onClick(event) {
   } catch (e) { notification = e.message || "Aktion fehlgeschlagen"; draw(); }
 }
 root.addEventListener("click",onClick);
+root.addEventListener("change",e=>{
+  if(e.target?.id==="guest-locale"){
+    guestLocale=normalizeLocale(e.target.value);
+    sessionStorage.setItem("skillprint:guestLocale",guestLocale);
+    draw();
+  }
+});
+root.addEventListener("keydown",e=>{
+  if(e.target?.id==="guest-chat" && e.key==="Enter" && !e.shiftKey && !e.isComposing){
+    e.preventDefault();
+    root.querySelector("[data-action=chat]")?.click();
+  }
+});
 window.addEventListener("hashchange",navigate);
 window.addEventListener("storage",e=>{ if (e.key?.startsWith(STORE)) refresh(); });
 channel?.addEventListener("message",e=>{ if (e.data?.id===current().id) refresh(); });

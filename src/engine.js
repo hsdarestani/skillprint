@@ -21,6 +21,8 @@ export const RUBRIC = [
 ];
 export const ACTION_LABELS = {
   ask_guest: "Rückfrage an den Gast",
+  candidate_message: "Nachricht an den KI-Gast",
+  guest_message: "Antwort des simulierten Gastes",
   verify_identity: "Gastidentität geprüft",
   open_invoice: "Rechnung geöffnet",
   compare_items: "Rechnungspositionen verglichen",
@@ -42,7 +44,10 @@ export function deriveState(events = []) {
   const corrected = candidate.find(e => e.type === "correct_invoice" && Number(e.payload?.amount) === SCENARIO.correct);
   const reply = find("submit_reply");
   return {
-    asked: Boolean(find("ask_guest")),
+    asked: Boolean(find("ask_guest") || candidate.some(e => e.type === "candidate_message")),
+    guestMessages: events.filter(e => e.actor === "guest" && e.type === "guest_message").length,
+    candidateMessages: candidate.filter(e => e.type === "candidate_message").length,
+    guestReply: events.filter(e => e.actor === "guest" && e.type === "guest_message").at(-1)?.payload?.text || "",
     verified: Boolean(verified),
     opened: Boolean(opened),
     compared: Boolean(compared),
@@ -60,7 +65,7 @@ export function evaluate(events = []) {
   const relevant = types => candidate.filter(e => types.includes(e.type)).map(e => e.id);
   const reply = candidate.find(e => e.type === "submit_reply");
   const criteria = [
-    { id: "clarification", points: state.asked ? 2 : state.replied ? 1 : 0, evidence: relevant(["ask_guest", "submit_reply"]), reason: state.asked ? "Das Anliegen wurde aktiv geklärt." : "Keine dokumentierte fachliche Rückfrage." },
+    { id: "clarification", points: state.asked ? 2 : state.replied ? 1 : 0, evidence: relevant(["ask_guest", "candidate_message", "submit_reply"]), reason: state.asked ? "Das Anliegen wurde aktiv geklärt." : "Keine dokumentierte fachliche Rückfrage." },
     { id: "privacy", points: state.privacyBreach ? 0 : state.verified ? 2 : 0, evidence: relevant(["verify_identity", "open_invoice"]), reason: state.privacyBreach ? "Die Rechnung wurde vor der Identitätsprüfung geöffnet." : state.verified ? "Identität vor Datenzugriff geprüft." : "Identitätsprüfung nicht dokumentiert." },
     { id: "solution", points: state.corrected && state.compared ? 2 : state.compared ? 1 : 0, evidence: relevant(["open_invoice", "compare_items", "correct_invoice"]), reason: state.corrected ? "Doppelte Frühstücksposition korrigiert; Gesamtbetrag 220 EUR." : "Die sachlich korrekte Rechnungskorrektur fehlt." },
     { id: "documentation", points: (reply?.payload?.text?.length || 0) >= 45 ? 2 : state.replied ? 1 : 0, evidence: relevant(["submit_reply"]), reason: state.replied ? "Eine Antwort wurde dokumentiert; Vollständigkeit ist fachlich nachzuprüfen." : "Es liegt keine dokumentierte Kundenantwort vor." },
@@ -77,20 +82,27 @@ export function evaluate(events = []) {
     disclaimer: "Demonstrationsrubrik, nicht arbeitspsychologisch validiert. Kein Eignungs- oder Einstellungswahrscheinlichkeitswert. Entscheidung nur durch Menschen.",
   };
 }
-const CANDIDATE_ACTIONS = new Set(["ask_guest", "verify_identity", "open_invoice", "compare_items", "correct_invoice", "escalate", "submit_reply"]);
+const CANDIDATE_ACTIONS = new Set(["candidate_message", "ask_guest", "verify_identity", "open_invoice", "compare_items", "correct_invoice", "escalate", "submit_reply"]);
 export function appendAction(session, action, role, now = new Date().toISOString()) {
   if (!session || !Array.isArray(session.events)) throw new Error("INVALID_SESSION");
   if (!action || typeof action.type !== "string") throw new Error("INVALID_ACTION");
   if (role === "candidate" && !CANDIDATE_ACTIONS.has(action.type)) throw new Error("FORBIDDEN");
   if (role === "coach" && action.type !== "observer_note") throw new Error("FORBIDDEN");
-  if (role !== "candidate" && role !== "coach") throw new Error("FORBIDDEN");
+  if (role === "guest" && action.type !== "guest_message") throw new Error("FORBIDDEN");
+  if (role !== "candidate" && role !== "coach" && role !== "guest") throw new Error("FORBIDDEN");
   // Retry of an already-committed action must succeed, even after completion or approval.
   const id = typeof action.id === "string" && /^[a-zA-Z0-9_-]{8,80}$/.test(action.id) ? action.id : crypto.randomUUID();
   if (session.events.some(e => e.id === id)) return session;
   if (session.reviewStatus === "approved") throw new Error("SESSION_FINALIZED");
   if (session.events.length >= 250) throw new Error("EVENT_LIMIT");
   const current = deriveState(session.events);
-  if (role === "candidate" && current.replied) throw new Error("ASSESSMENT_COMPLETED");
+  if ((role === "candidate" || role === "guest") && current.replied && action.type !== "guest_message") throw new Error("ASSESSMENT_COMPLETED");
+  if (action.type === "candidate_message") {
+    if (current.candidateMessages >= 12) throw new Error("CHAT_LIMIT_REACHED");
+    if (current.candidateMessages > current.guestMessages) throw new Error("GUEST_REPLY_PENDING");
+  }
+  if (role === "guest" && current.candidateMessages <= current.guestMessages) throw new Error("NO_CHAT_REQUEST");
+  if (role === "candidate" && action.type === "submit_reply" && current.candidateMessages > current.guestMessages) throw new Error("GUEST_REPLY_PENDING");
   if (action.type === "compare_items" && !current.opened) throw new Error("OPEN_INVOICE_FIRST");
   if (action.type === "correct_invoice" && !current.compared) throw new Error("COMPARE_INVOICE_FIRST");
   if (action.type === "submit_reply" && !current.opened) throw new Error("OPEN_INVOICE_FIRST");
@@ -100,11 +112,13 @@ export function appendAction(session, action, role, now = new Date().toISOString
     if (!Number.isFinite(amount) || amount < 0 || amount > 10000) throw new Error("INVALID_AMOUNT");
     payload.amount = amount;
   }
-  if (action.type === "submit_reply" || action.type === "observer_note") {
+  if (action.type === "submit_reply" || action.type === "observer_note" || action.type === "candidate_message" || action.type === "guest_message") {
     const val = String(action.text || "").trim();
-    if (val.length < 8 || val.length > 800) throw new Error("INVALID_TEXT");
+    if (val.length < (action.type === "candidate_message" ? 3 : 8) || val.length > (action.type === "candidate_message" ? 500 : 800)) throw new Error("INVALID_TEXT");
     payload.text = val;
+    if (action.type === "guest_message") payload.source = action.source === "ai" ? "ai" : "scripted";
+    if (action.type === "candidate_message" || action.type === "guest_message") payload.locale = ["de","tr","en"].includes(action.locale) ? action.locale : "de";
   }
-  const event = { id, sequence: session.events.length + 1, at: now, actor: role === "coach" ? "observer" : "candidate", type: action.type, payload };
+  const event = { id, sequence: session.events.length + 1, at: now, actor: role === "coach" ? "observer" : role === "guest" ? "guest" : "candidate", type: action.type, payload };
   return { ...session, events: [...session.events, event], status: action.type === "submit_reply" ? "completed" : "running" };
 }

@@ -1,4 +1,5 @@
 import { newSession, appendAction, deriveState, evaluate, SCENARIO } from "../src/engine.js";
+import { generateGuestReply, normalizeLocale } from "../src/guest.js";
 
 // Cloudflare Worker + SQLite Durable Object; capability links, DEMO DATA ONLY.
 const headers = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, POST, OPTIONS", "access-control-allow-headers": "content-type", "cache-control": "no-store", "referrer-policy": "no-referrer" };
@@ -12,7 +13,12 @@ export default {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
     const url = new URL(request.url);
     if (url.pathname === "/api/health") return json({ ok: true, name: "SKILLPRINT LIVE API", mode: "demo" });
+    const clientKey = request.headers.get("cf-connecting-ip") || "unknown-test-client";
     if (url.pathname === "/api/sessions" && request.method === "POST") {
+      if (env.RATE_CREATE) {
+        const {success} = await env.RATE_CREATE.limit({key:clientKey});
+        if (!success) return error("SESSION_RATE_LIMIT",429);
+      }
       const id = "sl-" + crypto.randomUUID().slice(0, 8);
       const tokens = { coachToken: randomToken(), candidateToken: randomToken() };
       const room = env.ROOMS.get(env.ROOMS.idFromName(id));
@@ -20,13 +26,17 @@ export default {
       if (!response.ok) return error("Could not create assessment", 500);
       return json({ id, ...tokens, scenario: SCENARIO.id }, 201);
     }
-    const match = url.pathname.match(/^\/api\/sessions\/([a-z0-9-]+)\/(snapshot|action|finalize|stream)$/);
+    const match = url.pathname.match(/^\/api\/sessions\/([a-z0-9-]+)\/(snapshot|action|chat|finalize|stream)$/);
     if (!match || !idOK(match[1])) return error("NOT_FOUND", 404);
     const [, id, method] = match;
     const token = url.searchParams.get("token") || request.headers.get("x-assessment-token");
     if (!token || !/^[a-f0-9]{48}$/.test(token)) return error("UNAUTHORIZED", 401);
-    const expectedMethod = { snapshot: "GET", action: "POST", finalize: "POST", stream: "GET" }[method];
+    const expectedMethod = { snapshot: "GET", action: "POST", chat: "POST", finalize: "POST", stream: "GET" }[method];
     if (request.method !== expectedMethod) return error("METHOD_NOT_ALLOWED", 405);
+    if (method === "chat" && env.RATE_CHAT) {
+      const {success} = await env.RATE_CHAT.limit({key:clientKey});
+      if (!success) return error("CHAT_RATE_LIMIT",429);
+    }
     const qs = new URLSearchParams({ token }).toString();
     const target = "https://room/" + method + "?" + qs;
     const room = env.ROOMS.get(env.ROOMS.idFromName(id));
@@ -39,7 +49,7 @@ export default {
 };
 
 export class AssessmentRoom {
-  constructor(ctx) { this.ctx = ctx; this.clients = new Map(); }
+  constructor(ctx, env) { this.ctx = ctx; this.env = env; this.clients = new Map(); }
   async fetch(request) {
     const url = new URL(request.url);
     if (url.pathname === "/init" && request.method === "POST") {
@@ -68,9 +78,35 @@ export class AssessmentRoom {
     if (url.pathname === "/action" && request.method === "POST") {
       let action;
       try { action = await request.json(); } catch { return error("INVALID_JSON"); }
+      if (action?.type === "candidate_message" || action?.type === "guest_message") return error("USE_CHAT_ENDPOINT", 403);
       try { session = appendAction(session, action, role); } catch (e) { return error(e.message); }
       await this.ctx.storage.put("session", session);
       this.broadcast(session);
+      return json(this.snapshot(session, role));
+    }
+    if (url.pathname === "/chat" && request.method === "POST") {
+      if (role !== "candidate") return error("FORBIDDEN", 403);
+      let body;
+      try { body = await request.json(); } catch { return error("INVALID_JSON"); }
+      const text = typeof body?.text === "string" ? body.text.trim() : "";
+      const id = typeof body?.id === "string" && /^[a-zA-Z0-9_-]{8,80}$/.test(body.id) ? body.id : "";
+      if (!id || text.length < 3 || text.length > 500) return error("INVALID_CHAT_INPUT");
+      const locale = normalizeLocale(body?.locale);
+      const existing = session.events.find(e => e.id === id);
+      if (existing) return existing.actor === "candidate" && existing.type === "candidate_message"
+        ? json(this.snapshot(session, role)) : error("ID_CONFLICT", 409);
+      try { session = appendAction(session,{ id,type:"candidate_message",text,locale }, "candidate"); }
+      catch (e) { return error(e.message, e.message === "GUEST_REPLY_PENDING" ? 409 : 400); }
+      await this.ctx.storage.put("session",session);
+      this.broadcast(session);
+      const generated = await generateGuestReply({ events:session.events, locale, message:text, ai:this.env.AI });
+      // Another event may have been recorded during the model call. Reload before appending.
+      session = await this.ctx.storage.get("session");
+      if (!session.events.some(e => e.id === "guest_"+id)) {
+        session = appendAction(session,{ id:"guest_"+id, type:"guest_message", text:generated.text,locale,source:generated.source },"guest");
+        await this.ctx.storage.put("session",session);
+        this.broadcast(session);
+      }
       return json(this.snapshot(session, role));
     }
     if (url.pathname === "/finalize" && request.method === "POST") {
@@ -86,7 +122,7 @@ export class AssessmentRoom {
     return error("NOT_FOUND", 404);
   }
   snapshot(session, role) {
-    const visibleEvents = role === "coach" ? session.events : session.events.filter(e => e.actor === "candidate");
+    const visibleEvents = role === "coach" ? session.events : session.events.filter(e => e.actor === "candidate" || e.actor === "guest");
     const base = { id: session.id, scenarioId: session.scenarioId, rubricVersion: session.rubricVersion, status: session.status, reviewStatus: session.reviewStatus, events: visibleEvents, state: deriveState(visibleEvents), role };
     return role === "coach" ? { ...base, report: evaluate(session.events) } : base;
   }
