@@ -111,7 +111,7 @@ function handoverPanel(s,m) {
     <div><span>${m.checkinResolved?"✓":"○"}</span><p>Check-in geklärt</p></div>
     <div><span>${m.phoneAnswered?"✓":"○"}</span><p>Housekeeping kontaktiert</p></div>
   </div>
-  <div class="calm-optional-learning"><span>Optional: Lernsequenz</span><button type="button" class="outline" data-studio-tab="learning">Öffnen →</button></div>
+  <div class="calm-optional-learning"><span>Lernmodul</span><button type="button" class="outline" data-studio-tab="learning">Öffnen →</button></div>
   ${s.replied?`<div class="completed-reply"><span>✓</span><p>${s.replyText.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</p></div>`:
    `<div class="fd-handover-form"><label for="guest-reply">Dokumentierte Antwort an Lena Weber</label><textarea id="guest-reply" rows="5" placeholder="Guten Tag Frau Weber, ich habe die Rechnung geprüft ..."></textarea>
    <p>Offene Vorgänge zuerst abschließen.</p>
@@ -131,26 +131,26 @@ export function renderFrontDeskStudio(snapshot,{activeTab,renderChat,renderProgr
  const content={guest:()=>guestPanel(state,renderChat),arrival:()=>arrivalPanel(state,chat("arrival"),expandedPanels),phone:()=>phonePanel(state,chat("phone"),expandedPanels),invoice:()=>invoicePanel(state,euro,snapshot.events,snapshot.status==="completed",expandedPanels),learning:()=>`<button type="button" class="calm-back" data-studio-tab="handover">← Zurück zum Abschluss</button>${renderLearningPanel(snapshot.events,snapshot.status==="completed")}`,handover:()=>handoverPanel(state,m)}[tab]();
  const navigation=()=>TABS.map(t=>`<button type="button" class="fd-tab ${t.id===tab?"fd-tab-active":""} ${signals[t.id].done?"fd-tab-done":""}" data-studio-tab="${t.id}" role="tab" aria-selected="${t.id===tab}" tabindex="${t.id===tab?"0":"-1"}"><span class="fd-tab-icon">${t.icon}</span><span>${t.label}</span>${signals[t.id].urgent?'<i class="fd-alert-pip"></i>':""}</button>`).join("");
  return `<div class="fd-studio">
-  <div class="fd-topline"><span>SKILLPRINT <b>LIVE</b> <i> / </i> HOTEL AURORA</span><span class="fd-topline-right"><i></i>${snapshot.status==="completed"?"ASSESSMENT ABGESCHLOSSEN":"PRAKTISCHE ARBEITSPROBE"} · DEMO</span></div>
-  <div class="fd-heading"><div><p class="eyebrow">HOTEL FRONT OFFICE / SESSION ${safe(snapshot.id)}</p><h1>Ihr Arbeitsplatz.</h1><p>Bearbeiten Sie die Anliegen im Hotel Aurora.</p></div>
+  <div class="fd-topline"><span>SKILLPRINT <b>LIVE</b> <i> / </i> AURORA</span><span class="fd-topline-right"><i></i>${snapshot.status==="completed"?"ABGESCHLOSSEN":"LIVE DEMO"}</span></div>
+  <div class="fd-heading"><div><p class="eyebrow">HOTEL AURORA</p><h1>Front Desk.</h1></div>
     <div class="fd-score-clock"><strong>${String(progress.done).padStart(2,"0")}<span>/ ${progress.total}</span></strong><small>Erledigt</small><div class="fd-score-track"><i style="width:${progress.percentage}%"></i></div></div></div>
   <div class="fd-scene" aria-label="Interaktiver Hotelempfang">
     <div class="fd-scene-atmosphere"><div class="fd-window fd-window-left"></div><div class="fd-window fd-window-right"></div><div class="fd-scene-sign"><span>H</span><b>AURORA</b></div><div class="fd-lamp fd-lamp-left"></div><div class="fd-lamp fd-lamp-right"></div></div>
     <div class="fd-scene-people">${people(state,tab,safe)}</div>
-    <div class="fd-counter"><span>RECEPTION / DESK 01</span><span>${m.pending>0?`<b class="fd-counter-alert">${m.pending} OFFENE ANLIEGEN</b>`:"SERVICE ACTIVE"}</span></div>
+    <div class="fd-counter"><span>FRONT DESK 01</span><span>${m.pending>0?`<b class="fd-counter-alert">${m.pending} OFFEN</b>`:"LIVE"}</span></div>
     <div class="fd-stations">${station("phone","Housekeeping",m.phoneAnswered?"Status geprüft":m.phoneRinging?"Anruf wartet":"Leitung frei","⌁",tab,m.phoneRinging&&!m.phoneAnswered,m.phoneAnswered)}
     ${station("invoice","Rechnung HT-2048",state.corrected?"Korrigiert":state.opened?"In Prüfung":"Noch geschützt","▤",tab,false,state.corrected)}
     ${station("arrival","Anreise CK-311",m.checkinResolved?"Dokumentiert":m.checkinArrived?"Gast wartet":"Erwartet","▣",tab,m.checkinArrived&&!m.checkinResolved,m.checkinResolved)}</div>
   </div>
   <div class="fd-cockpit">
-    <aside class="fd-command-rail"><div class="fd-rail-header"><h2>Aufgaben</h2></div>
+    <aside class="fd-command-rail"><div class="fd-rail-header"><h2>Stationen</h2></div>
        <div class="fd-desktop-tabs" role="tablist" aria-label="Arbeitsbereich auswählen">${navigation()}</div>
-       <div class="fd-rail-progress"><span>FORTSCHRITT / ${progress.percentage}%</span><div class="fd-score-track"><i style="width:${progress.percentage}%"></i></div><p>${m.pending>0?`${m.pending} aktuelle Unterbrechung${m.pending>1?"en":""}`:"Keine offenen Unterbrechungen"}</p></div>
+       <div class="fd-rail-progress"><div class="fd-score-track" role="progressbar" aria-label="Aufgabenfortschritt" aria-valuenow="${progress.done}" aria-valuemax="${progress.total}"><i style="width:${progress.percentage}%"></i></div></div>
        <div class="fd-rail-privacy">◈ <span>Nur Testaktionen werden erfasst.</span></div>
     </aside>
     <section class="fd-work-panel" aria-label="Aktiver Arbeitsbereich"><div class="fd-pane-scroll">${content}</div></section>
     <aside class="fd-activity-rail"><p class="eyebrow">LIVE</p><h3>Letzte Aktion</h3>${latestEvent(snapshot.events,safe,fmt)}
-      <div class="fd-activity-list">${snapshot.events.filter(e=>e.actor!=="observer").slice(-5).reverse().map(e=>`<div class="fd-activity-item"><span>●</span><div><b>${safe(ACTION_LABELS[e.type]||e.type)}</b><small>${fmt(e.at)}</small></div></div>`).join("")}</div>
+      <div class="fd-activity-list">${snapshot.events.filter(e=>e.actor!=="observer").slice(-3).reverse().map(e=>`<div class="fd-activity-item"><span>●</span><div><b>${safe(ACTION_LABELS[e.type]||e.type)}</b><small>${fmt(e.at)}</small></div></div>`).join("")}</div>
       <div class="fd-activity-footer">Nur fiktive Daten · Manuelle Auswertung.</div>
     </aside>
   </div>
@@ -160,12 +160,12 @@ export function renderFrontDeskStudio(snapshot,{activeTab,renderChat,renderProgr
 export function renderStudioObserver(snapshot,{safe,fmt}) {
  const state=snapshot.state,m=state.multitask;
  const items=[
-  {icon:"◉",title:"Lena Weber",detail:state.replied?"Antwort dokumentiert":state.corrected?"Rechnung korrigiert":state.asked?"Im Gespräch":"Reklamation offen",done:state.replied,active:!state.replied},
-  {icon:"▣",title:"Sofia Demir",detail:!m.checkinArrived?"Anreise erwartet":m.checkinResolved?"Check-in dokumentiert":"Gast wartet am Empfang",done:m.checkinResolved,active:m.checkinArrived&&!m.checkinResolved},
-  {icon:"⌁",title:"Housekeeping",detail:!m.phoneRinging?"Leitung frei":m.phoneAnswered?"Zimmerstatus bestätigt":"Telefon klingelt",done:m.phoneAnswered,active:m.phoneRinging&&!m.phoneAnswered},
-  {icon:"▤",title:"Rechnung",detail:state.corrected?"220 € · korrigiert":state.opened?"240 € · in Prüfung":"Geschützt",done:state.corrected,active:state.opened&&!state.corrected}
+  {icon:"◉",title:"Lena Weber",detail:state.replied?"Erledigt":state.corrected?"Korrigiert":state.asked?"Im Gespräch":"Reklamation",done:state.replied,active:!state.replied},
+  {icon:"▣",title:"Sofia Demir",detail:!m.checkinArrived?"Erwartet":m.checkinResolved?"Erledigt":"Wartet",done:m.checkinResolved,active:m.checkinArrived&&!m.checkinResolved},
+  {icon:"⌁",title:"Housekeeping",detail:!m.phoneRinging?"Bereit":m.phoneAnswered?"Erledigt":"Klingelt",done:m.phoneAnswered,active:m.phoneRinging&&!m.phoneAnswered},
+  {icon:"▤",title:"Rechnung",detail:state.corrected?"Korrigiert":state.opened?"In Prüfung":"Geschützt",done:state.corrected,active:state.opened&&!state.corrected}
  ];
- return `<div class="fd-observer-mirror"><div class="fd-observer-banner"><span><i></i> LIVE SERVICE DESK</span><b>HOTEL AURORA / DEMO</b></div><div class="fd-observer-grid">
+ return `<div class="fd-observer-mirror"><div class="fd-observer-banner"><span><i></i> LIVE</span><b>AURORA</b></div><div class="fd-observer-grid">
  ${items.map(x=>`<div class="fd-observer-tile ${x.active?"fd-observer-active":""}"><span class="fd-observer-icon">${x.icon}</span><div><b>${x.title}</b><p>${x.detail}</p></div><span class="fd-observer-tick">${x.done?"✓":x.active?"●":"○"}</span></div>`).join("")}
- </div><div class="fd-observer-footer"><div><small>LETZTES EREIGNIS</small><b>${safe(ACTION_LABELS[snapshot.events.at(-1)?.type]||"Noch keine Handlung")}</b></div><span>${snapshot.events.length} Events</span></div></div>`;
+ </div><div class="fd-observer-footer"><div><small>LETZTES EVENT</small><b>${safe(ACTION_LABELS[snapshot.events.at(-1)?.type]||"Noch keine Handlung")}</b></div><span>${snapshot.events.length} Events</span></div></div>`;
 }
