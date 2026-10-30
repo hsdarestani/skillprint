@@ -4,6 +4,7 @@ import { multitaskBanner, multitaskWorkspace, multitaskControl, multitaskReport 
 import { missionProgress, missionDock, invoiceActionStates } from "./mission-ui.js";
 import { renderFrontDeskStudio, renderStudioObserver, studioActiveTab } from "./frontdesk-studio.js";
 import { renderReplayWidget,renderReportAppendix,renderDrawingDocument } from "./evidence-lab.js";
+import "./cinematic-ui.css";
 import { scriptedServiceResponse } from "./service-dialogue.js";
 
 const root = document.getElementById("app");
@@ -253,29 +254,32 @@ function sidebar(r) {
 function footer() { return `<footer class="footer"><span>SKILLPRINT LIVE</span><span>Demo · Nur fiktive Daten</span></footer>`; }
 function dashboard() {
   const hasSession = Boolean(active?.id && active?.coachToken);
-  return `<div class="dashboard calm-dashboard">
-    <section class="calm-hero">
-      <div class="calm-hero-content">
-        <p class="eyebrow accent">SKILLPRINT LIVE · HOTEL FRONT OFFICE</p>
-        <h1>Zeigen, was jemand <em>wirklich kann.</em></h1>
-        <p>Ein praktischer Hoteltest. Live beobachten. Entscheidungen nachvollziehen.</p>
-        <button class="primary calm-primary" data-action="create-advanced" aria-label="Live Multitasking Demo starten">Demo starten ${icon("arrow")}</button>
-        ${hasSession?`<div class="calm-resume"><span>Letzte Demo</span><a href="${href("control",active.id,active.coachToken)}">Fortsetzen ${icon("arrow")}</a><button class="outline" data-action="copy-candidate">Kandidatenlink kopieren</button></div>`:""}
+  return `<div class="dashboard calm-dashboard lux-page lux-start">
+    <section class="calm-hero lux-hero">
+      <div class="lux-ambient" aria-hidden="true"></div>
+      <div class="calm-hero-content lux-hero-content">
+        <p class="eyebrow lux-kicker"><span class="lux-live-spark"></span> SKILLPRINT LIVE <span class="lux-kicker-divider">/</span> HOTEL AURORA</p>
+        <h1>Weniger reden.<br><em>Können sehen.</em></h1>
+        <p>Praktisch. Live. Nachvollziehbar.</p>
+        <button class="primary calm-primary lux-main-cta" data-action="create-advanced" aria-label="Live Multitasking Demo starten">Demo starten ${icon("arrow")}</button>
+        <div class="lux-hero-signature"><span>${icon("radio")} Live</span><span>${icon("sparkle")} AI</span><span>${icon("shield")} Evidence</span></div>
       </div>
-      <div class="calm-hero-art" aria-hidden="true"><div class="calm-hotel-symbol">H</div><span>HOTEL AURORA</span><div class="calm-hero-strokes"><i></i><i></i><i></i></div></div>
+      <div class="calm-hero-art lux-orbit" aria-hidden="true"><span class="lux-orbit-ring"></span><span class="lux-orbit-ring lux-orbit-ring-two"></span><div class="calm-hotel-symbol">H</div><span>HOTEL AURORA</span><i class="lux-orbit-spark lux-orbit-spark-a"></i><i class="lux-orbit-spark lux-orbit-spark-b"></i></div>
     </section>
-    <section class="calm-how">
-      <h2>So funktioniert die Demo</h2>
-      <div class="calm-three">
-        <div><span>01</span><h3>Test starten</h3><p>Kandidatenlink öffnen.</p></div>
-        <div><span>02</span><h3>Live beobachten</h3><p>Entscheidungen und Gespräche sehen.</p></div>
-        <div><span>03</span><h3>Belege prüfen</h3><p>Jeden Schritt im Bericht wiederfinden.</p></div>
+    <section class="calm-how lux-journey" aria-label="So funktioniert die Demo">
+      <div class="calm-three lux-three">
+        <div><span class="lux-step-icon">${icon("play")}</span><h3>Starten</h3></div>
+        <div><span class="lux-step-icon">${icon("radio")}</span><h3>Beobachten</h3></div>
+        <div><span class="lux-step-icon">${icon("check")}</span><h3>Verstehen</h3></div>
       </div>
     </section>
-    <details class="calm-details calm-dashboard-extra"><summary>Weitere Möglichkeiten <span>Details anzeigen</span></summary>
-      <p>Der Test ist eine Demo mit fiktiven Hotelgästen. Es werden keine echten Bewerberdaten benötigt.</p>
-      <button class="outline" data-action="create">Einfache Rechnungssimulation starten</button>
-      <p class="calm-disclaimer">Die Ergebnisse sind nicht als wissenschaftlich validierte Eignungsdiagnostik zu verstehen.</p>
+    <details class="calm-details calm-dashboard-extra lux-extras" data-panel="dashboard-more" ${openPanels.has("dashboard-more")?"open":""}>
+      <summary>Mehr Optionen <span class="lux-summary-mark">+</span></summary>
+      <div class="lux-extra-items">
+        ${hasSession?`<a class="lux-extra-link" href="${href("control",active.id,active.coachToken)}">${icon("arrow")} Letzte Demo öffnen</a><button class="lux-extra-link" data-action="copy-candidate">${icon("link")} Kandidatenlink kopieren</button>`:""}
+        <button class="lux-extra-link" data-action="create">${icon("play")} Einfache Demo</button>
+      </div>
+      <p class="calm-disclaimer">Nur fiktive Daten · Keine automatische Einstellungsentscheidung.</p>
     </details>
   </div>`;
 }
@@ -366,31 +370,31 @@ function control() {
   const liveEvents=snapshot.events.slice(-4).reverse();
   return `<div class="control-page calm-control">
     <div class="page-heading calm-page-heading">
-      <div><p class="eyebrow">HOTEL AURORA · ${safe(snapshot.id)}</p><h1>Control Room</h1><p>Verfolgen Sie die Arbeit live. Jeder Schritt bleibt nachvollziehbar.</p></div>
+      <div><p class="eyebrow">HOTEL AURORA · ${safe(snapshot.id)}</p><h1>Control Room</h1><p>Alles im Blick.</p></div>
       <div class="heading-controls">
         ${tag(finished?"Abgeschlossen":"Live",finished?"connected":"live")}
-        <button class="secondary" data-action="copy-candidate">${icon("link")} Kandidatenlink</button>
+        <button class="lux-icon-button" data-action="copy-candidate" title="Kandidatenlink kopieren" aria-label="Kandidatenlink kopieren">${icon("link")}</button>
       </div>
     </div>
-    <div class="calm-control-top">
-      <div class="calm-status-line"><span><i class="calm-live-dot"></i> ${finished?"Test beendet":"Test läuft"}</span><b>${snapshot.events.length} Ereignisse</b><a href="${reportUrl}">Bericht ansehen ${icon("arrow")}</a></div>
+    <div class="calm-control-top lux-control-top"><div class="lux-ambient" aria-hidden="true"></div>
+      <div class="calm-status-line lux-control-status"><span><i class="calm-live-dot"></i> ${finished?"Abgeschlossen":"Live"}</span><b>${snapshot.events.length} Events</b></div>
       <section class="panel calm-observer-main">
-        <div class="panel-top"><div><p class="eyebrow">LIVE ÜBERSICHT</p><h2>Was passiert gerade?</h2></div></div>
+        <div class="panel-top"><div><p class="eyebrow">LIVE DESK</p><h2>Hotel Aurora</h2></div></div>
         ${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}
         ${snapshot.mode==="multitask"&&s.opened?`<details class="calm-details calm-observer-drawing" data-panel="live-drawing" ${openPanels.has("live-drawing")?"open":""}><summary>Markierungen auf der Rechnung ansehen <small>${s.drawingCount} Linien</small></summary><div class="lab-observer-live-document">${renderDrawingDocument(snapshot.events,false)}</div></details>`:""}
       </section>
     </div>
     <section class="calm-recent">
-      <div class="calm-section-header"><div><p class="eyebrow">EREIGNISSE</p><h2>Letzte Aktionen</h2></div><span>${snapshot.events.length} gesamt</span></div>
-      ${liveEvents.length?`<div class="calm-feed">${liveEvents.map(e=>eventLine(e,true)).join("")}</div>`:`<p class="calm-empty">Noch keine Aktion. Öffnen Sie den Kandidatenlink auf einem zweiten Gerät.</p>`}
+      <div class="calm-section-header"><div><h2>Aktivität</h2></div><span>${snapshot.events.length} Events</span></div>
+      ${liveEvents.length?`<div class="calm-feed">${liveEvents.map(e=>eventLine(e,true)).join("")}</div>`:`<p class="calm-empty">Noch keine Aktion · Kandidatenlink öffnen.</p>`}
       <details class="calm-details" data-panel="control-all-events" ${openPanels.has("control-all-events")?"open":""}>
-        <summary>Alle Ereignisse anzeigen <small>${snapshot.events.length}</small></summary>
+        <summary>${icon("clock")} Verlauf <small>${snapshot.events.length}</small></summary>
         <div class="event-list calm-expanded-feed">${snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join("")}</div>
       </details>
     </section>
-    <div class="calm-control-next"><div><h2>${finished?"Test abgeschlossen":"Bereit zur Auswertung?"}</h2><p>${finished?"Der Bericht zeigt die Schritte und ihre Belege.":"Der Bericht ist jederzeit verfügbar; Bewertungen erst nach Abschluss."}</p></div><a class="primary" href="${reportUrl}">Evidence Report ${icon("arrow")}</a></div>
+    <div class="calm-control-next lux-next"><div><span class="lux-next-symbol">${icon("file")}</span><h2>Evidence Report</h2></div><a class="primary lux-report-cta" href="${reportUrl}">Ansehen ${icon("arrow")}</a></div>
     <details class="calm-details calm-tools" data-panel="control-tools" ${openPanels.has("control-tools")?"open":""}>
-      <summary>Beobachternotiz und Bewertungsdetails <small>Optional</small></summary>
+      <summary>${icon("sparkle")} Werkzeuge <small>Optional</small></summary>
       ${report.multitask?multitaskControl(s,report.multitask,finished):""}
       <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><h2>Bewertungsübersicht</h2></div></div>
         ${finished?`<div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div>`:'<p>Die Rubrik wird nach Abschluss angezeigt.</p>'}
@@ -408,9 +412,9 @@ function reportView() {
   const selected=snapshot.events.find(e=>e.id===chosenEvidence);
   return `<div class="report-page calm-report">
     <div class="page-heading calm-page-heading">
-      <div><p class="eyebrow">HOTEL FRONT OFFICE · ${safe(snapshot.id)}</p><h1>Evidence Report</h1><p>Entscheidungen und Belege an einem Ort.</p></div>
-      <div class="heading-controls"><button class="outline" data-action="print">${icon("file")} PDF / Drucken</button>
-        <button class="secondary" data-action="approve" ${!finished||snapshot.reviewStatus==="approved"?"disabled":""}>${icon("check")} ${snapshot.reviewStatus==="approved"?"Geprüft":"Prüfung bestätigen"}</button></div>
+      <div><p class="eyebrow">HOTEL FRONT OFFICE · ${safe(snapshot.id)}</p><h1>Evidence Report</h1><p>Jede Entscheidung. Ein Beleg.</p></div>
+      <div class="heading-controls"><button class="lux-icon-button" data-action="print" title="Als PDF drucken" aria-label="Als PDF drucken">${icon("file")}</button>
+        <button class="secondary lux-approval-button" data-action="approve" ${!finished||snapshot.reviewStatus==="approved"?"disabled":""}>${icon("check")} ${snapshot.reviewStatus==="approved"?"Geprüft":"Prüfung bestätigen"}</button></div>
     </div>
     <section class="calm-report-summary">
       <div><span>STATUS</span><strong>${snapshot.reviewStatus==="approved"?"Menschlich geprüft":finished?"Bereit zur Prüfung":"Test läuft"}</strong></div>
@@ -418,8 +422,8 @@ function reportView() {
       <div><span>NACHWEISE</span><strong>${report.evidenceCount} Ereignisse</strong></div>
     </section>
     <section class="panel calm-criteria">
-      <div class="calm-section-header"><div><p class="eyebrow">AUFGABENBEWERTUNG</p><h2>Was wurde beobachtet?</h2></div></div>
-      <p class="calm-context-note">Die Punkte sind illustrative Aufgabenwerte, keine Eignungswahrscheinlichkeit.</p>
+      <div class="calm-section-header"><div><p class="eyebrow">EVIDENCE</p><h2>Entscheidungen</h2></div></div>
+      <p class="calm-context-note">Demo-Werte · Menschliche Prüfung erforderlich.</p>
       <div class="calm-criteria-list">
         ${report.criteria.map(c=>`<article class="calm-criterion">
           <div><h3>${safe(c.title)}</h3><p>${c.evidence.length?c.evidence.length+" dokumentierte Belege":"Noch kein Beleg"}</p></div>
@@ -430,7 +434,7 @@ function reportView() {
       </div>
     </section>
     <details class="calm-details calm-report-section" data-panel="report-replay" ${openPanels.has("report-replay")?"open":""}>
-      <summary><span>Replay & Timeline</span><small>Schrittweise zurückgehen</small></summary>
+      <summary><span>${icon("clock")} Replay</span><small>Timeline</small></summary>
       ${snapshot.mode==="multitask"?renderReplayWidget(snapshot.events,replaySequence??snapshot.events.at(-1)?.sequence??0):""}
       <section class="panel calm-full-timeline"><div class="panel-top"><h2>Alle Aktionen</h2></div>
         <div class="event-list">${snapshot.events.map(e=>eventLine(e,true)).join("")||"<p>Keine Ereignisse vorhanden.</p>"}</div>
@@ -438,7 +442,7 @@ function reportView() {
       </section>
     </details>
     <details class="calm-details calm-report-section" data-panel="report-extras" ${openPanels.has("report-extras")?"open":""}>
-      <summary><span>Weitere Nachweise</span><small>Lernsequenz, Markierungen und zusätzliche Kriterien</small></summary>
+      <summary><span>${icon("shield")} Weitere Belege</span><small>Details</small></summary>
       ${report.multitask?multitaskReport(report.multitask):""}
       ${snapshot.mode==="multitask"?renderReportAppendix(snapshot.events):""}
     </details>
