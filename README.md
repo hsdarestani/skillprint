@@ -10,6 +10,20 @@ The existing **Cloudflare Pages Git integration** publishes the Front Desk Studi
 
 For future builds, configure Pages to build with `npm run build` and serve `dist` (Vite output) to avoid the slower browser-native source fallback. No extra Pages API token is needed for the existing Git auto-deployment.
 
+## Ashkan UX review — calm, simple, first-time-user friendly
+
+The demo remains feature-complete for the hotel scenario, but **shows fewer things at once**:
+
+- **Start:** one primary `Demo starten` action, three short steps, continuing an existing session, and an optional classic demo under a disclosure; no repeated sales cards or repeated start buttons.
+- **Candidate:** compact lobby scene, one active work area, **five essential mobile tabs**. The `Lernen` module is reachable from `Abschluss` (and remains a desktop tab), rather than occupying a permanent bottom-navigation slot.
+- **Candidate operational actions:** booking-system and telephone actions are disclosed when requested; the original action types, risky-choice branches and evidence rules are intact. Live-updating open sections and unsent text stay intact across redraws.
+- **Pencil:** still available under the invoice screen as an optional annotation panel.
+- **Control Room:** prioritize the live desk, the last four actions, and the report link. The full event stream, rubric and observer notes remain available behind labeled details.
+- **Report:** simple status/evidence summary and short criterion rows. Replay, raw event details, and learning appendix remain independently expandable. The print/PDF command expands report details before printing.
+- **Navigation:** one top navigation instead of a duplicated sidebar and header. More legible mobile labels and reduced background decoration.
+
+This is a user-interface revision only. No model, backend, session events, permissions, scoring behavior or retention policy was changed. Visual validation on actual iPad/Pencil is still outstanding.
+
 ## Sprint 5 — Pencil evidence, sequence replay and Teach–Retry–Transfer
 
 The advanced Hotel Front Desk Studio now demonstrates three additional features grounded in the Sprint 0 developer specification. **All data is synthetic, and none of these exercises establishes hiring suitability.**

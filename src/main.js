@@ -26,6 +26,7 @@ let serviceBusy = false;
 let studioTab = "guest";
 let replaySequence = null;
 let activeStroke = null;
+const openPanels = new Set();
 let lastStudioSession = "";
 const studioDrafts = Object.create(null);
 const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("skillprint-demo") : null;
@@ -56,6 +57,7 @@ function localSnapshot(id, token) {
 }
 async function startSession(mode = "classic") {
   studioTab = "guest";
+  openPanels.clear();
   for (const id of Object.keys(studioDrafts)) delete studioDrafts[id];
   let data;
   if (REMOTE) {
@@ -193,6 +195,7 @@ async function navigate() {
   if (r.id !== lastStudioSession) {
     lastStudioSession = r.id;
     studioTab = "guest";
+    openPanels.clear();
     replaySequence=null;
     for (const id of Object.keys(studioDrafts)) delete studioDrafts[id];
   }
@@ -228,9 +231,18 @@ function icon(name) {
   return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.sparkle}</svg>`;
 }
 function header(r) {
-  const coach = active?.id && active?.coachToken ? href("control",active.id,active.coachToken) : "#/dashboard";
-  const report = active?.id && active?.coachToken ? href("report",active.id,active.coachToken) : "#/dashboard";
-  return `<header class="topbar"><a class="brand" href="#/dashboard" aria-label="SKILLPRINT LIVE"><span class="brand-mark">S<span class="brand-star">✦</span></span><span class="brand-name"><b>SKILLPRINT</b><span>LIVE</span></span></a><nav aria-label="Hauptnavigation"><a href="#/dashboard" class="${r.view==="dashboard"?"active":""}">Übersicht</a><a href="${coach}" class="${r.view==="control"?"active":""}">Control Room</a><a href="${report}" class="${r.view==="report"?"active":""}">Evidence Report</a></nav><span class="header-right">${tag(!REMOTE?"LOKALE VORSCHAU":apiHealth==="online"?"BACKEND ONLINE":apiHealth==="checking"?"VERBINDUNG WIRD GEPRÜFT":"BACKEND OFFLINE",apiHealth==="online"?"connected":apiHealth==="offline"?"live":"muted")}</span></header>`;
+  const coach=active?.id&&active?.coachToken?href("control",active.id,active.coachToken):"#/dashboard";
+  const report=active?.id&&active?.coachToken?href("report",active.id,active.coachToken):"#/dashboard";
+  const candidate=r.view==="candidate";
+  return `<header class="topbar calm-topbar">
+    <a class="brand" href="#/dashboard" aria-label="SKILLPRINT LIVE"><span class="brand-mark">S<span class="brand-star">✦</span></span><span class="brand-name"><b>SKILLPRINT</b><span>LIVE</span></span></a>
+    ${candidate?`<span class="calm-candidate-label">Hotel Aurora · Demo</span>`:`<nav aria-label="Hauptnavigation">
+      <a href="#/dashboard" class="${r.view==="dashboard"?"active":""}">Start</a>
+      <a href="${coach}" class="${r.view==="control"?"active":""}">Live</a>
+      <a href="${report}" class="${r.view==="report"?"active":""}">Bericht</a>
+    </nav>`}
+    ${apiHealth==="offline"?'<span class="header-right">'+tag("Verbindung unterbrochen","live")+'</span>':""}
+  </header>`;
 }
 function sidebar(r) {
   const selected = r.view;
@@ -238,26 +250,33 @@ function sidebar(r) {
   const report = active?.id && active?.coachToken ? href("report",active.id,active.coachToken) : "#/dashboard";
   return `<aside class="sidebar"><p class="eyebrow">WORKSPACE / 01</p><a class="nav-item ${selected==="dashboard"?"chosen":""}" href="#/dashboard"><span class="nav-glyph">◫</span> Übersicht</a><a class="nav-item ${selected==="control"?"chosen":""}" href="${coach}"><span class="nav-glyph">◉</span> Live Control Room</a><a class="nav-item ${selected==="report"?"chosen":""}" href="${report}"><span class="nav-glyph">▤</span> Evidence Report</a><div class="sidebar-bottom"><span class="tiny-orbit">✳</span><p>Evidence over intuition.</p><small>ENGINE / HOTEL V1.2</small></div></aside>`;
 }
-function footer() { return `<footer class="footer"><span>SKILLPRINT LIVE <i>·</i> SPRINT 2 · MULTITASK</span><span>DEMONSTRATOR · Keine echten Bewerberdaten</span><span>© 2026</span></footer>`; }
+function footer() { return `<footer class="footer"><span>SKILLPRINT LIVE</span><span>Demo · Nur fiktive Daten</span></footer>`; }
 function dashboard() {
-  const inProgress = active?.id;
-  return `<div class="dashboard">
-    <div class="hero"><div class="hero-glow"></div><div class="hero-inner">
-      <div class="eyebrow accent"><span class="pulse-dot"></span> THE FUTURE OF PRACTICAL ASSESSMENT</div>
-      <h1>Arbeit sichtbar machen.<br><em>Potenzial belegbar prüfen.</em></h1>
-      <p>Keine Bauchgefühl-Interviews. Sondern realistische Arbeitsproben, ein synchroner Beobachtungsraum und jede Aussage verknüpft mit dem tatsächlichen Arbeitsschritt.</p>
-      <div class="hero-actions"><button class="primary" data-action="create-advanced">${icon("play")} Live Multitasking Demo starten</button><button class="ghost-btn" data-action="create">Klassische Demo</button><a class="ghost-btn" href="#workflows">Das Konzept entdecken ${icon("arrow")}</a></div>
-      <div class="hero-proof"><span>◉ LIVE EVENT STREAM</span><span>✧ EVIDENCE LINKED</span><span>⌑ HUMAN IN CONTROL</span></div>
-    </div><div class="hero-illustration" aria-hidden="true"><div class="simulation-head"><span>SKILLPRINT / LIVE SESSION</span><span class="live-chip">● LIVE</span></div><div class="simulation-body"><div class="sim-line long"></div><div class="sim-line"></div><div class="sim-card"><div class="sim-dot"></div><span>IDENTITY CHECK</span><b>VERIFIED</b></div><div class="sim-card"><div class="sim-dot"></div><span>INVOICE REVIEW</span><b>220.00 EUR</b></div><div class="sim-card active"><div class="sim-dot"></div><span>EVIDENCE STREAM</span><b>CONNECTED</b></div><div class="sim-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
-    </div>
-    ${inProgress ? `<section class="resume-card"><div><p class="eyebrow">AKTIVE DEMO</p><h2>Session ${safe(active.id)}</h2><p>Die Links öffnen echte Rollenansichten; der Kandidatenlink kann geteilt werden.</p></div><div class="resume-actions"><a class="secondary" href="${href("control",active.id,active.coachToken)}">Control Room öffnen ${icon("arrow")}</a><button class="outline" data-action="copy-candidate">${icon("link")} Kandidatenlink kopieren</button></div></section>` : ""}
-    <div class="section-head" id="workflows"><div><p class="eyebrow">THE ASSESSMENT SYSTEM</p><h2>Ein Workflow. <span>Klare Entscheidungen.</span></h2></div><p>Eine durchgängige Erfahrung für Kandidat, Beobachter und Fachverantwortliche.</p></div>
-    <div class="feature-grid">
-      <article class="feature-card"><div class="feature-index">01 / WORK</div><div class="feature-icon">⌘</div><h3>Job Simulation</h3><p>Eine echte Aufgabe statt abstrakter Multiple-Choice-Fragen. Fachliche Handlungsschritte werden nachvollziehbar.</p><span>Hotel Front Office / Demo</span></article>
-      <article class="feature-card"><div class="feature-index">02 / OBSERVE</div><div class="feature-icon">◎</div><h3>Live Control Room</h3><p>Strukturierte Aktionen erscheinen nahezu in Echtzeit bei autorisierten Beobachtern, ohne private Geräteinhalte.</p><span>Event-basierte Synchronisation</span></article>
-      <article class="feature-card"><div class="feature-index">03 / PROVE</div><div class="feature-icon">≋</div><h3>Evidence Replay</h3><p>Jede Rubrik-Aussage springt zu den relevanten Ereignissen. Fehlende Belege bleiben ausdrücklich sichtbar.</p><span>Menschliche Freigabe nötig</span></article>
-    </div>
-    <div class="demo-brief"><div><p class="eyebrow accent">FIRST VERTICAL SLICE</p><h2>Ein Gast. Eine fehlerhafte Rechnung.<br><em>Viele beobachtbare Entscheidungen.</em></h2><p>Ein realitätsnaher Demonstrator aus dem Pflichtenheft: Identität prüfen, doppelt berechnetes Frühstück entdecken, Rechnung korrigieren und die Antwort dokumentieren.</p><button class="primary" data-action="create-advanced">Multitask Simulation starten ${icon("arrow")}</button></div><div class="brief-panel"><span>ASSESSMENT BRIEF</span><h3>Front Office Agent</h3><div class="brief-row"><small>SCENARIO</small><b>Invoice discrepancy</b></div><div class="brief-row"><small>RUBRIC</small><b>5 Kriterien / 100 Punkte</b></div><div class="brief-row"><small>MODALITY</small><b>Browser · Tablet</b></div><div class="brief-row"><small>STATUS</small><b>Illustrative Demo</b></div></div></div>
+  const hasSession = Boolean(active?.id && active?.coachToken);
+  return `<div class="dashboard calm-dashboard">
+    <section class="calm-hero">
+      <div class="calm-hero-content">
+        <p class="eyebrow accent">SKILLPRINT LIVE · HOTEL FRONT OFFICE</p>
+        <h1>Zeigen, was jemand <em>wirklich kann.</em></h1>
+        <p>Ein praktischer Hoteltest. Live beobachten. Entscheidungen nachvollziehen.</p>
+        <button class="primary calm-primary" data-action="create-advanced" aria-label="Live Multitasking Demo starten">Demo starten ${icon("arrow")}</button>
+        ${hasSession?`<div class="calm-resume"><span>Letzte Demo</span><a href="${href("control",active.id,active.coachToken)}">Fortsetzen ${icon("arrow")}</a><button class="outline" data-action="copy-candidate">Kandidatenlink kopieren</button></div>`:""}
+      </div>
+      <div class="calm-hero-art" aria-hidden="true"><div class="calm-hotel-symbol">H</div><span>HOTEL AURORA</span><div class="calm-hero-strokes"><i></i><i></i><i></i></div></div>
+    </section>
+    <section class="calm-how">
+      <h2>So funktioniert die Demo</h2>
+      <div class="calm-three">
+        <div><span>01</span><h3>Test starten</h3><p>Kandidatenlink öffnen.</p></div>
+        <div><span>02</span><h3>Live beobachten</h3><p>Entscheidungen und Gespräche sehen.</p></div>
+        <div><span>03</span><h3>Belege prüfen</h3><p>Jeden Schritt im Bericht wiederfinden.</p></div>
+      </div>
+    </section>
+    <details class="calm-details calm-dashboard-extra"><summary>Weitere Möglichkeiten <span>Details anzeigen</span></summary>
+      <p>Der Test ist eine Demo mit fiktiven Hotelgästen. Es werden keine echten Bewerberdaten benötigt.</p>
+      <button class="outline" data-action="create">Einfache Rechnungssimulation starten</button>
+      <p class="calm-disclaimer">Die Ergebnisse sind nicht als wissenschaftlich validierte Eignungsdiagnostik zu verstehen.</p>
+    </details>
   </div>`;
 }
 function guestMessage(state) {
@@ -270,7 +289,7 @@ function guestChatPanel(events, state) {
   ];
   const pending = state.candidateMessages > state.guestMessages;
   return `<div class="dialogue-toolbar">
-    <div><span class="dialogue-live"><i></i> LIVE ROLEPLAY</span><span class="dialogue-identity">Lena Weber · Hotelgast</span></div>
+    <div><span class="dialogue-live"><i></i> KI-SIMULATION</span><span class="dialogue-identity">Lena Weber · Hotelgast</span></div>
     <label for="guest-locale">Gesprächssprache</label>
     <select id="guest-locale" aria-label="Gesprächssprache auswählen">
       <option value="de" ${guestLocale==="de"?"selected":""}>Deutsch</option>
@@ -287,7 +306,7 @@ function guestChatPanel(events, state) {
   </div>
   <div class="chat-composer"><label class="field-label" for="guest-chat">Antwort oder Rückfrage an den Gast</label>
     <textarea id="guest-chat" maxlength="500" rows="2" placeholder="Guten Tag Frau Weber, was stimmt an der Rechnung nicht?" ${state.replied || state.candidateMessages>=12 || pending || chatBusy?"disabled":""}></textarea>
-    <div class="chat-actions"><small>Max. 12 Nachrichten · KI-Antworten werden nicht als Eignungsurteil bewertet</small>
+    <div class="chat-actions"><small>Bis zu 12 Nachrichten</small>
     <button class="secondary" data-action="chat" ${state.replied || state.candidateMessages>=12 || pending || chatBusy?"disabled":""}>Nachricht senden ${icon("arrow")}</button></div>
   </div>`;
 }
@@ -298,7 +317,7 @@ function candidateView() {
     return renderFrontDeskStudio(snapshot,{
       activeTab:studioTab,
       renderChat:()=>guestChatPanel(snapshot.events,snapshot.state),
-      serviceLocale:guestLocale,serviceBusy,
+      serviceLocale:guestLocale,serviceBusy,expandedPanels:openPanels,
       safe,euro,fmt
     });
   }
@@ -341,34 +360,89 @@ function mirror(s) {
 }
 function control() {
   if (!snapshot) return loading();
-  if (snapshot.role !== "coach") return denied("Dieser Bereich ist nur über einen autorisierten Beobachterlink erreichbar.");
-  const s = snapshot.state, report = snapshot.report;
-  const scoringReady = snapshot.status === "completed";
-  return `<div class="control-page"><div class="page-heading"><div><p class="eyebrow">LIVE ASSESSMENT / ${safe(snapshot.id)}</p><h1>Control Room <span class="title-outline">/ 01</span></h1><p>Beobachten Sie Arbeitsschritte, dokumentieren Sie Fakten und springen Sie anschließend direkt zum Beleg.</p></div><div class="heading-controls">${tag(snapshot.status==="completed"?"SESSION COMPLETED":"SESSION RUNNING",snapshot.status==="completed"?"connected":"live")}<button class="outline" data-action="copy-candidate">${icon("link")} Kandidatenlink</button></div></div>
-    <div class="metrics-row"><div class="metric"><span>LIVE EREIGNISSE</span><strong>${snapshot.events.length.toString().padStart(2,"0")}</strong><small>Zeitgestempelte Actions</small></div><div class="metric"><span>ARBEITSPROBE / DEMO</span><strong>${scoringReady?report.total:"—"}${scoringReady?"<small> / 100</small>":""}</strong><small>${scoringReady?"Nicht validierter Übungswert":"Bewertung nach Abschluss"}</small></div><div class="metric"><span>BEOBACHTERSTATUS</span><strong class="metric-word">Verbunden</strong><small>Rollenbasierter Zugriff</small></div><div class="metric"><span>REPORTSTATUS</span><strong class="metric-word">${snapshot.reviewStatus==="approved"?"Geprüft":"Offen"}</strong><small>Human Review erforderlich</small></div></div>
-    <div class="control-grid"><section class="panel primary-panel"><div class="panel-top"><div><p class="eyebrow">A / SYNCHRONISIERTE TESTANSICHT</p><h2>Candidate workspace</h2></div><span class="stream-indicator"><i></i> ${REMOTE?"REMOTE STREAM":"LOCAL EVENT MIRROR"}</span></div>${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}${snapshot.mode==="multitask"&&s.opened?`<div class="lab-observer-live-document"><div class="lab-observer-heading"><span>LIVE DOKUMENT / RECHNUNG</span><b>${s.drawingCount} Stiftlinien · Zeitgestempelt</b></div>${renderDrawingDocument(snapshot.events,false)}</div>`:""}</section>
-      <aside class="panel evidence-panel"><div class="panel-top"><div><p class="eyebrow">B / LIVE EVENT STREAM</p><h2>Timeline</h2></div><span class="event-counter">${snapshot.events.length} EVENTS</span></div><div class="event-list">${snapshot.events.length?snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join(""):`<div class="empty-events"><div>◎</div><b>Warten auf die erste Aktion</b><p>Öffnen Sie den Kandidatenlink auf einem zweiten Gerät und starten Sie den Test.</p></div>`}</div></aside>
+  if (snapshot.role !== "coach") return denied("Dieser Bereich ist nur über den Beobachterlink erreichbar.");
+  const s=snapshot.state,report=snapshot.report,finished=snapshot.status==="completed";
+  const reportUrl=href("report",snapshot.id,tokenFor(current()));
+  const liveEvents=snapshot.events.slice(-4).reverse();
+  return `<div class="control-page calm-control">
+    <div class="page-heading calm-page-heading">
+      <div><p class="eyebrow">HOTEL AURORA · ${safe(snapshot.id)}</p><h1>Control Room</h1><p>Verfolgen Sie die Arbeit live. Jeder Schritt bleibt nachvollziehbar.</p></div>
+      <div class="heading-controls">
+        ${tag(finished?"Abgeschlossen":"Live",finished?"connected":"live")}
+        <button class="secondary" data-action="copy-candidate">${icon("link")} Kandidatenlink</button>
+      </div>
     </div>
-    ${report.multitask?multitaskControl(s,report.multitask,scoringReady):""}
-    <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><p class="eyebrow">C / TRANSPARENTE BEWERTUNG</p><h2>Kompetenzmatrix</h2></div><a class="inline-link" href="${href("report",snapshot.id,tokenFor(current()))}">Vollständiger Bericht ${icon("arrow")}</a></div>${scoringReady?`<div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div>`:`<p class="fd-scoring-pending">Die Bewertung wird erst nach Abschluss der Aufgaben angezeigt. Die Live-Ereignisse sind bereits für die spätere manuelle Prüfung dokumentiert.</p>`}<p class="subtle-note">Illustrative Rubrik. Die fachliche Aussage ist noch nicht validiert.</p></section>
-      <section class="panel note-panel"><div class="panel-top"><div><p class="eyebrow">D / BEOBACHTER-PROTOKOLL</p><h2>Beobachtung notieren</h2></div></div><label class="field-label" for="observer-note">Nur konkrete Handlungen, keine Persönlichkeitsdiagnosen</label><textarea id="observer-note" placeholder="Zum Beispiel: Der Kandidat prüfte zunächst die Buchungsnummer ..." rows="3"></textarea><button class="secondary" data-action="note">Notiz mit Zeitstempel sichern ${icon("arrow")}</button></section></div>
-    <div class="bottom-cta"><div><p class="eyebrow accent">NEXT / EVIDENCE REPLAY</p><h2>Vom Score zurück zum Beleg.</h2></div><a class="primary" href="${href("report",snapshot.id,tokenFor(current()))}">Evidence Report öffnen ${icon("arrow")}</a></div>
+    <div class="calm-control-top">
+      <div class="calm-status-line"><span><i class="calm-live-dot"></i> ${finished?"Test beendet":"Test läuft"}</span><b>${snapshot.events.length} Ereignisse</b><a href="${reportUrl}">Bericht ansehen ${icon("arrow")}</a></div>
+      <section class="panel calm-observer-main">
+        <div class="panel-top"><div><p class="eyebrow">LIVE ÜBERSICHT</p><h2>Was passiert gerade?</h2></div></div>
+        ${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}
+        ${snapshot.mode==="multitask"&&s.opened?`<details class="calm-details calm-observer-drawing" data-panel="live-drawing" ${openPanels.has("live-drawing")?"open":""}><summary>Markierungen auf der Rechnung ansehen <small>${s.drawingCount} Linien</small></summary><div class="lab-observer-live-document">${renderDrawingDocument(snapshot.events,false)}</div></details>`:""}
+      </section>
+    </div>
+    <section class="calm-recent">
+      <div class="calm-section-header"><div><p class="eyebrow">EREIGNISSE</p><h2>Letzte Aktionen</h2></div><span>${snapshot.events.length} gesamt</span></div>
+      ${liveEvents.length?`<div class="calm-feed">${liveEvents.map(e=>eventLine(e,true)).join("")}</div>`:`<p class="calm-empty">Noch keine Aktion. Öffnen Sie den Kandidatenlink auf einem zweiten Gerät.</p>`}
+      <details class="calm-details" data-panel="control-all-events" ${openPanels.has("control-all-events")?"open":""}>
+        <summary>Alle Ereignisse anzeigen <small>${snapshot.events.length}</small></summary>
+        <div class="event-list calm-expanded-feed">${snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join("")}</div>
+      </details>
+    </section>
+    <div class="calm-control-next"><div><h2>${finished?"Test abgeschlossen":"Bereit zur Auswertung?"}</h2><p>${finished?"Der Bericht zeigt die Schritte und ihre Belege.":"Der Bericht ist jederzeit verfügbar; Bewertungen erst nach Abschluss."}</p></div><a class="primary" href="${reportUrl}">Evidence Report ${icon("arrow")}</a></div>
+    <details class="calm-details calm-tools" data-panel="control-tools" ${openPanels.has("control-tools")?"open":""}>
+      <summary>Beobachternotiz und Bewertungsdetails <small>Optional</small></summary>
+      ${report.multitask?multitaskControl(s,report.multitask,finished):""}
+      <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><h2>Bewertungsübersicht</h2></div></div>
+        ${finished?`<div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div>`:'<p>Die Rubrik wird nach Abschluss angezeigt.</p>'}
+      </section><section class="panel note-panel"><div class="panel-top"><div><h2>Beobachtung notieren</h2></div></div>
+        <label class="field-label" for="observer-note">Konkrete Handlung dokumentieren</label><textarea id="observer-note" placeholder="Was haben Sie beobachtet?" rows="3"></textarea>
+        <button class="secondary" data-action="note">Notiz speichern</button>
+      </section></div>
+    </details>
   </div>`;
 }
 function reportView() {
   if (!snapshot) return loading();
-  if (snapshot.role !== "coach") return denied("Nur autorisierte Beobachter können den Ergebnisbericht öffnen.");
-  const report = snapshot.report;
-  const reportReady=snapshot.status==="completed";
-  const selected = snapshot.events.find(e=>e.id===chosenEvidence);
-  return `<div class="report-page"><div class="page-heading"><div><p class="eyebrow">EVIDENCE REPORT / ${safe(snapshot.id)}</p><h1>Jede Aussage. <em>Ein Beleg.</em></h1><p>Die Rubrik ist eine vorläufige Demonstration. Die Entscheidung über Eignung oder Einstellung liegt ausschließlich beim Menschen.</p></div><div class="heading-controls"><button class="outline" data-action="print">${icon("file")} Drucken / PDF</button><button class="secondary" data-action="approve" ${snapshot.status!=="completed"||snapshot.reviewStatus==="approved"?"disabled":""}>${icon("check")} ${snapshot.reviewStatus==="approved"?"Freigabe erteilt":"Fachlich freigeben"}</button></div></div>
-    <div class="report-hero"><div><p class="eyebrow">BEOBACHTETE LEISTUNG / DEMO</p><div class="score-number">${reportReady?report.total:"—"}<span>${reportReady?" / 100":" · Nach Abschluss"}</span></div><p>Gewichteter Aufgabenwert, keine Eignungswahrscheinlichkeit.</p></div><div class="report-status"><div class="status-ribbon"><span>REPORT STATUS</span>${tag(snapshot.reviewStatus==="approved"?"HUMAN REVIEWED":"HUMAN REVIEW REQUIRED",snapshot.reviewStatus==="approved"?"connected":"gold")}</div><div class="status-ribbon"><span>JOB FAMILY</span><strong>HOTEL FRONT OFFICE</strong></div><div class="status-ribbon"><span>RUBRIC VERSION</span><strong>${safe(snapshot.rubricVersion)}</strong></div><div class="status-ribbon"><span>EVIDENCE EVENTS</span><strong>${report.evidenceCount}</strong></div></div></div>
-    <div class="report-grid"><section class="panel"><div class="panel-top"><div><p class="eyebrow">01 / BEWERTUNGSMATRIX</p><h2>Kriterien mit Belegverknüpfung</h2></div></div><div class="criterion-list">${report.criteria.map(c=>`<article class="criterion"><div class="criterion-header"><div><h3>${safe(c.title)}</h3><span>GEWICHT ${c.weight}%</span></div><strong>${reportReady?c.points+" / 2":"Ausstehend"}</strong></div><p>${safe(c.reason)}</p><div class="criterion-footer"><span>${c.weighted} gewichtete Punkte</span>${c.evidence.length?`<button class="evidence-link" data-evidence="${safe(c.evidence[0])}">${icon("link")} Beleg öffnen · ${c.evidence.length} Ereignis(se)</button>`:"<span class='no-evidence'>Nicht beurteilbar / kein Beleg</span>"}</div></article>`).join("")}</div></section>
-    <aside class="panel report-timeline"><div class="panel-top"><div><p class="eyebrow">02 / REPLAY INDEX</p><h2>Zeitgestempelte Handlungen</h2></div></div><div class="event-list">${snapshot.events.length?snapshot.events.map(e=>eventLine(e,true)).join(""):"<p>Keine Ereignisse vorhanden.</p>"}</div>${selected?`<div class="evidence-detail"><p class="eyebrow accent">AUSGEWÄHLTER BELEG</p><h3>${safe(ACTION_LABELS[selected.type]||selected.type)}</h3><p>${fmt(selected.at)} · ${safe(selected.actor)} · Event #${selected.sequence}</p><pre>${safe(JSON.stringify(selected.payload,null,2))}</pre></div>`:"<div class='evidence-detail placeholder'>Klicken Sie auf einen Rubrik-Beleg oder einen Timeline-Eintrag, um die Originalaktion zu sehen.</div>"}</aside></div>
-    ${report.multitask?multitaskReport(report.multitask):""}
-    ${snapshot.mode==="multitask"?renderReplayWidget(snapshot.events,replaySequence??snapshot.events.at(-1)?.sequence??0):""}
-    ${snapshot.mode==="multitask"?renderReportAppendix(snapshot.events):""}
-    <div class="warning-banner">${icon("shield")}<p><b>Verantwortungsvolle Bewertung.</b> Kein Emotion-Scoring, keine automatisierte Einstellung oder Ablehnung, kein Zugriff auf private Apps und keine Aussage über allgemeine Intelligenz oder Persönlichkeit. Fachliche Validierung, Datenschutzprüfung und echte Nutzerabnahme stehen noch aus.</p></div>
+  if (snapshot.role !== "coach") return denied("Dieser Bereich ist nur über den Beobachterlink erreichbar.");
+  const report=snapshot.report,finished=snapshot.status==="completed";
+  const selected=snapshot.events.find(e=>e.id===chosenEvidence);
+  return `<div class="report-page calm-report">
+    <div class="page-heading calm-page-heading">
+      <div><p class="eyebrow">HOTEL FRONT OFFICE · ${safe(snapshot.id)}</p><h1>Evidence Report</h1><p>Entscheidungen und Belege an einem Ort.</p></div>
+      <div class="heading-controls"><button class="outline" data-action="print">${icon("file")} PDF / Drucken</button>
+        <button class="secondary" data-action="approve" ${!finished||snapshot.reviewStatus==="approved"?"disabled":""}>${icon("check")} ${snapshot.reviewStatus==="approved"?"Geprüft":"Prüfung bestätigen"}</button></div>
+    </div>
+    <section class="calm-report-summary">
+      <div><span>STATUS</span><strong>${snapshot.reviewStatus==="approved"?"Menschlich geprüft":finished?"Bereit zur Prüfung":"Test läuft"}</strong></div>
+      <div><span>ARBEITSPROBE (DEMO)</span><strong>${finished?report.total+" / 100":"Noch offen"}</strong></div>
+      <div><span>NACHWEISE</span><strong>${report.evidenceCount} Ereignisse</strong></div>
+    </section>
+    <section class="panel calm-criteria">
+      <div class="calm-section-header"><div><p class="eyebrow">AUFGABENBEWERTUNG</p><h2>Was wurde beobachtet?</h2></div></div>
+      <p class="calm-context-note">Die Punkte sind illustrative Aufgabenwerte, keine Eignungswahrscheinlichkeit.</p>
+      <div class="calm-criteria-list">
+        ${report.criteria.map(c=>`<article class="calm-criterion">
+          <div><h3>${safe(c.title)}</h3><p>${c.evidence.length?c.evidence.length+" dokumentierte Belege":"Noch kein Beleg"}</p></div>
+          <div class="calm-criterion-right">${finished?`<b>${c.points} / 2</b>`:'<span>Offen</span>'}
+          ${c.evidence.length?`<button class="evidence-link" data-evidence="${safe(c.evidence[0])}">Beleg ansehen</button>`:""}</div>
+          <details class="calm-criterion-detail"><summary>Begründung</summary><p>${safe(c.reason)}</p></details>
+        </article>`).join("")}
+      </div>
+    </section>
+    <details class="calm-details calm-report-section" data-panel="report-replay" ${openPanels.has("report-replay")?"open":""}>
+      <summary><span>Replay & Timeline</span><small>Schrittweise zurückgehen</small></summary>
+      ${snapshot.mode==="multitask"?renderReplayWidget(snapshot.events,replaySequence??snapshot.events.at(-1)?.sequence??0):""}
+      <section class="panel calm-full-timeline"><div class="panel-top"><h2>Alle Aktionen</h2></div>
+        <div class="event-list">${snapshot.events.map(e=>eventLine(e,true)).join("")||"<p>Keine Ereignisse vorhanden.</p>"}</div>
+        ${selected?`<div class="evidence-detail"><p class="eyebrow">GEWÄHLTER BELEG</p><h3>${safe(ACTION_LABELS[selected.type]||selected.type)}</h3><p>${fmt(selected.at)} · Event #${selected.sequence}</p><details><summary>Rohdaten anzeigen</summary><pre>${safe(JSON.stringify(selected.payload,null,2))}</pre></details></div>`:""}
+      </section>
+    </details>
+    <details class="calm-details calm-report-section" data-panel="report-extras" ${openPanels.has("report-extras")?"open":""}>
+      <summary><span>Weitere Nachweise</span><small>Lernsequenz, Markierungen und zusätzliche Kriterien</small></summary>
+      ${report.multitask?multitaskReport(report.multitask):""}
+      ${snapshot.mode==="multitask"?renderReportAppendix(snapshot.events):""}
+    </details>
+    <p class="calm-disclaimer">Nur fiktive Testdaten. Fachliche Validierung und Datenschutzprüfung stehen aus; über eine Einstellung entscheidet ausschließlich ein Mensch.</p>
   </div>`;
 }
 function loading() { return '<div class="loading-screen"><div class="loader"></div><h2>Sitzung wird geladen</h2><p>Die freigegebenen Testdaten werden abgerufen.</p></div>'; }
@@ -386,7 +460,7 @@ function draw() {
       if (r.view === "candidate" && snapshot?.mode === "multitask") studioDrafts[id]=input.value;
     }
   }
-  root.innerHTML = `${header(r)}<div class="app-grid">${isCandidate?"":sidebar(r)}<main class="${isCandidate?"full-width":""}">${apiHealth==="offline"?'<div class="notice" role="alert">Realtime-Backend nicht erreichbar. Bitte Cloudflare Worker prüfen.</div>':""}${notification?`<div class="notice" role="alert">${safe(notification)} <button data-action="dismiss">×</button></div>`:""}${body}${footer()}</main></div>`;
+  root.innerHTML = `${header(r)}<div class="app-grid calm-app-grid"><main class="${isCandidate?"full-width":""}">${apiHealth==="offline"?'<div class="notice" role="alert">Realtime-Backend nicht erreichbar. Bitte Cloudflare Worker prüfen.</div>':""}${notification?`<div class="notice" role="alert">${safe(notification)} <button data-action="dismiss">×</button></div>`:""}${body}${footer()}</main></div>`;
   const restore = r.view === "candidate" && snapshot?.mode === "multitask" ? studioDrafts : editable;
   for (const [id,value] of Object.entries(restore)) {
     const input = document.getElementById(id);
@@ -425,6 +499,7 @@ async function onClick(event) {
     chosenEvidence = element.dataset.evidence;
     const picked=snapshot?.events.find(e=>e.id===chosenEvidence);
     replaySequence=picked?.sequence??replaySequence;
+    openPanels.add("report-replay");
     draw();
     (document.querySelector("#evidence-replay")||document.querySelector(".evidence-detail"))?.scrollIntoView({ behavior:"smooth", block:"nearest" });
     return;
@@ -451,7 +526,7 @@ async function onClick(event) {
       notification = REMOTE ? "Kandidatenlink kopiert — auf anderen Geräten verwendbar." : "Link kopiert — lokale Vorschau funktioniert nur in diesem Browser.";
       draw(); return;
     }
-    if (action === "print") { window.print(); return; }
+    if (action === "print") { document.querySelectorAll(".calm-report details.calm-details, .calm-report .calm-criterion-detail").forEach(d => d.open = true); window.print(); return; }
     if (action === "approve") { await sendAction(r,{},true); return; }
     if (action === "note") {
       await sendAction(r,{ type:"observer_note", text:document.getElementById("observer-note")?.value || "", id:crypto.randomUUID() }); return;
@@ -510,6 +585,7 @@ async function finishInk(event,cancel=false) {
 root.addEventListener("pointerup",event=>{void finishInk(event);});
 root.addEventListener("pointercancel",event=>{void finishInk(event,true);});
 root.addEventListener("click",onClick);
+root.addEventListener("toggle",e=>{ const key=e.target?.dataset?.panel;if(key){if(e.target.open)openPanels.add(key);else openPanels.delete(key);} },true);
 root.addEventListener("change",e=>{
   if(e.target?.id==="replay-range") {
     replaySequence=Number(e.target.value);

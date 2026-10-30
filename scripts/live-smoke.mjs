@@ -64,6 +64,10 @@ const hasOldButton = scriptBody.includes("Neue Demo-Sitzung starten");
 console.log("DEPLOYED FRONTEND:",JSON.stringify({asset:mainURL.pathname,hasMultitask,hasOldButton,bytes:scriptBody.length}));
 assert.ok(hasMultitask, "STALE CLOUDFLARE PAGES DEPLOYMENT: live JS does NOT include Sprint 2 button. Redeploy latest main with build command npm run build and output dist.");
 console.log("PASS: deployed frontend includes Sprint 2 Multitasking UI");
+const calmUI = scriptBody.includes("calm-dashboard") && scriptBody.includes("calm-control");
+assert.ok(calmUI, "STALE PAGES: simplified Ashkan UX release has not reached the public frontend.");
+console.log("PASS: published site includes the calm dashboard, Control Room and report");
+
 let hasFrontDeskStudio = scriptBody.includes("fd-cockpit") && scriptBody.includes("Ihr Arbeitsplatz.");
 // In the current source-module Pages deployment, main.js IMPORTS a second
 // script. A built Vite bundle includes the studio inline; handle either format.

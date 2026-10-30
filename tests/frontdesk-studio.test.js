@@ -17,7 +17,7 @@ test("studio renders one active workspace and operational lobby stations",()=>{
  assert.match(html,/fd-cockpit/);
  assert.match(html,/fd-pane-guest/);
  assert.doesNotMatch(html,/id="fd-pane-arrival"/);
- assert.equal((html.match(/class="fd-tab /g)||[]).length,12);
+ assert.equal((html.match(/class="fd-tab /g)||[]).length,11);
  assert.match(html,/data-studio-tab="phone"/);
  assert.match(html,/data-studio-tab="handover"/);
  assert.match(html,/11/);
@@ -76,4 +76,30 @@ test("invalid active tab fails closed to guest, role-specific UI remains delegat
  assert.equal(studioActiveTab("phone"),"phone");
  const html=renderFrontDeskStudio(state(session()),{...deps,activeTab:"invalid"});
  assert.match(html,/fd-pane-guest/);
+});
+
+test("calm mobile candidate nav keeps core five jobs but makes learning accessible",()=>{
+ const html=renderFrontDeskStudio(state(session()),deps);
+ const mobile=html.slice(html.indexOf('<nav class="fd-mobile-tabs"'),html.indexOf('</nav>',html.indexOf('<nav class="fd-mobile-tabs"')));
+ assert.equal((mobile.match(/data-studio-tab=/g)||[]).length,5);
+ assert.doesNotMatch(mobile,/data-studio-tab="learning"/);
+ assert.match(mobile,/data-studio-tab="handover"/);
+ const finished=renderFrontDeskStudio(state(session()),{...deps,activeTab:"handover"});
+ assert.match(finished,/data-studio-tab="learning"/);
+ const learning=renderFrontDeskStudio(state(session()),{...deps,activeTab:"learning"});
+ assert.match(learning,/Zurück zum Abschluss/);
+});
+test("candidate controls are progressive but all operational choices remain present",()=>{
+ let s=session();
+ for(const type of ["ask_guest","verify_identity","welcome_checkin","verify_checkin"])s=action(s,type);
+ const arrival=renderFrontDeskStudio(state(s),{...deps,activeTab:"arrival"});
+ assert.match(arrival,/data-panel="candidate-arrival"/);
+ assert.match(arrival,/data-step="welcome_checkin"/);
+ assert.match(arrival,/data-step="promise_room"/);
+ const phone=renderFrontDeskStudio(state(s),{...deps,activeTab:"phone"});
+ assert.match(phone,/data-panel="candidate-phone"/);
+ assert.match(phone,/data-step="answer_phone"/);
+ assert.match(phone,/data-step="ignore_phone"/);
+ const expanded=renderFrontDeskStudio(state(s),{...deps,activeTab:"phone",expandedPanels:new Set(["candidate-phone"])});
+ assert.match(expanded,/data-panel="candidate-phone" open/);
 });
