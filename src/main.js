@@ -289,7 +289,7 @@ function guestChatPanel(events, state) {
   ];
   const pending = state.candidateMessages > state.guestMessages;
   return `<div class="dialogue-toolbar">
-    <div><span class="dialogue-live"><i></i> LIVE ROLEPLAY</span><span class="dialogue-identity">Lena Weber · Hotelgast</span></div>
+    <div><span class="dialogue-live"><i></i> KI-SIMULATION</span><span class="dialogue-identity">Lena Weber · Hotelgast</span></div>
     <label for="guest-locale">Gesprächssprache</label>
     <select id="guest-locale" aria-label="Gesprächssprache auswählen">
       <option value="de" ${guestLocale==="de"?"selected":""}>Deutsch</option>
@@ -306,7 +306,7 @@ function guestChatPanel(events, state) {
   </div>
   <div class="chat-composer"><label class="field-label" for="guest-chat">Antwort oder Rückfrage an den Gast</label>
     <textarea id="guest-chat" maxlength="500" rows="2" placeholder="Guten Tag Frau Weber, was stimmt an der Rechnung nicht?" ${state.replied || state.candidateMessages>=12 || pending || chatBusy?"disabled":""}></textarea>
-    <div class="chat-actions"><small>Max. 12 Nachrichten · KI-Antworten werden nicht als Eignungsurteil bewertet</small>
+    <div class="chat-actions"><small>Bis zu 12 Nachrichten</small>
     <button class="secondary" data-action="chat" ${state.replied || state.candidateMessages>=12 || pending || chatBusy?"disabled":""}>Nachricht senden ${icon("arrow")}</button></div>
   </div>`;
 }
