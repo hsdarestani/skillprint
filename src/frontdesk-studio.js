@@ -61,12 +61,12 @@ function arrivalPanel(s,chat) {
     <div class="fd-fact-strip"><span>BUCHUNG <b>CK-311</b></span><span>ZIMMER <b>311</b></span><span>STATUS <b class="fd-warn-text">Nicht freigegeben</b></span></div>
     ${chat}
     <p class="fd-system-hint">Sichern Sie Ihre Entscheidung im Buchungssystem.</p>
-    <div class="fd-step-stack">
+    <details class="fd-ops-details calm-operations"><summary>Aktionen im Buchungssystem <span>Öffnen</span></summary><div class="fd-step-stack">
       ${taskButton("welcome_checkin","Gast begrüßen",true,m.checkinWelcomed)}
       ${taskButton("verify_checkin","Reservierung abgleichen",m.checkinWelcomed,m.checkinVerified)}
       ${taskButton("offer_wait","Wartebereich und Rückmeldung anbieten",m.checkinVerified&&m.phoneAnswered,m.roomWaiting)}
       ${taskButton("complete_checkin","Vorgang dokumentieren",m.roomWaiting&&m.phoneAnswered&&m.checkinVerified,m.checkinResolved)}
-    </div>
+    </div></details>
     <details class="fd-risk-details"><summary>Alternative Entscheidung prüfen</summary><p>Sie können ein noch nicht freigegebenes Zimmer zusagen. Diese riskante Entscheidung wird als Fehlerbeleg aufgezeichnet.</p>${taskButton("promise_room","Zimmer sofort zusagen (riskant)",!m.roomPromised,false,true)}</details>`}
  </div>`;
 }
@@ -77,10 +77,10 @@ function phonePanel(s,chat) {
    `<div class="fd-call-screen ${!m.phoneAnswered?"fd-call-active":""}"><div class="fd-call-mark">⌁</div><p>${m.phoneAnswered?"GESPRÄCH BEENDET":"EINGEHENDER ANRUF"}</p><h3>Housekeeping · Zimmer 311</h3><span>${m.phoneAnswered?"Zimmer noch nicht freigegeben. Keine verbindliche Fertigstellungszeit.":"Die Abteilung möchte den Zimmerstatus klären."}</span></div>
    ${chat}
    <p class="fd-system-hint">Bestätigen Sie anschließend die Telefonaktion.</p>
-   <div class="fd-step-stack">
+   <details class="fd-ops-details calm-operations"><summary>Telefonaktion bestätigen <span>Öffnen</span></summary><div class="fd-step-stack">
       ${taskButton("hold_phone","Anruf höflich halten",!m.phoneAnswered,m.phoneHeld)}
       ${taskButton("answer_phone","Anruf beantworten",!m.phoneAnswered,m.phoneAnswered)}
-   </div>
+   </div></details>
    <details class="fd-risk-details"><summary>Alternative Entscheidung prüfen</summary><p>Den Anruf ohne Antwort lassen. Die Entscheidung wird als Ereignis dokumentiert.</p>${taskButton("ignore_phone","Anruf ignorieren (riskant)",!m.phoneAnswered&&!m.phoneIgnored,m.phoneIgnored,true)}</details>`}
  </div>`;
 }
@@ -100,7 +100,7 @@ function invoicePanel(s,euro,events=[],finished=false) {
       <div class="fd-adjust"><label for="amount">Neuen Rechnungsbetrag eingeben</label><div><input id="amount" type="number" step="0.01" min="0" placeholder="220.00" ${!s.compared||s.replied?"disabled":""}/><button class="secondary" data-step="correct_invoice" ${!s.compared||s.replied?"disabled":""}>Speichern</button></div><small>Die Originalpositionen werden nicht von der KI verändert.</small></div>
    </div>
   </div>
-  ${s.opened?renderDrawingPanel(events,!finished):""}
+  ${s.opened?`<details class="fd-ops-details calm-ink-toggle"><summary>Rechnung markieren (Stift / Touch) <span>Optional</span></summary>${renderDrawingPanel(events,!finished)}</details>`:""}
  </div>`;
 }
 function handoverPanel(s,m) {
