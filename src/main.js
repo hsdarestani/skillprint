@@ -4,7 +4,7 @@ import { multitaskBanner, multitaskWorkspace, multitaskControl, multitaskReport 
 import { missionProgress, missionDock, invoiceActionStates } from "./mission-ui.js";
 import { renderFrontDeskStudio, renderStudioObserver, studioActiveTab } from "./frontdesk-studio.js";
 import { renderReplayWidget,renderReportAppendix,renderDrawingDocument } from "./evidence-lab.js";
-import "./cinematic-ui.css";
+
 import { scriptedServiceResponse } from "./service-dialogue.js";
 
 const root = document.getElementById("app");
