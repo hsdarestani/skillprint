@@ -234,15 +234,15 @@ function header(r) {
   const coach=active?.id&&active?.coachToken?href("control",active.id,active.coachToken):"#/dashboard";
   const report=active?.id&&active?.coachToken?href("report",active.id,active.coachToken):"#/dashboard";
   const candidate=r.view==="candidate";
-  return \`<header class="topbar calm-topbar">
+  return `<header class="topbar calm-topbar">
     <a class="brand" href="#/dashboard" aria-label="SKILLPRINT LIVE"><span class="brand-mark">S<span class="brand-star">✦</span></span><span class="brand-name"><b>SKILLPRINT</b><span>LIVE</span></span></a>
-    \${candidate?\`<span class="calm-candidate-label">Hotel Aurora · Demo</span>\`:\`<nav aria-label="Hauptnavigation">
-      <a href="#/dashboard" class="\${r.view==="dashboard"?"active":""}">Start</a>
-      <a href="\${coach}" class="\${r.view==="control"?"active":""}">Live</a>
-      <a href="\${report}" class="\${r.view==="report"?"active":""}">Bericht</a>
-    </nav>\`}
-    \${apiHealth==="offline"?'<span class="header-right">'+tag("Verbindung unterbrochen","live")+'</span>':""}
-  </header>\`;
+    ${candidate?`<span class="calm-candidate-label">Hotel Aurora · Demo</span>`:`<nav aria-label="Hauptnavigation">
+      <a href="#/dashboard" class="${r.view==="dashboard"?"active":""}">Start</a>
+      <a href="${coach}" class="${r.view==="control"?"active":""}">Live</a>
+      <a href="${report}" class="${r.view==="report"?"active":""}">Bericht</a>
+    </nav>`}
+    ${apiHealth==="offline"?'<span class="header-right">'+tag("Verbindung unterbrochen","live")+'</span>':""}
+  </header>`;
 }
 function sidebar(r) {
   const selected = r.view;
@@ -253,14 +253,14 @@ function sidebar(r) {
 function footer() { return `<footer class="footer"><span>SKILLPRINT LIVE</span><span>Demo · Nur fiktive Daten</span></footer>`; }
 function dashboard() {
   const hasSession = Boolean(active?.id && active?.coachToken);
-  return \`<div class="dashboard calm-dashboard">
+  return `<div class="dashboard calm-dashboard">
     <section class="calm-hero">
       <div class="calm-hero-content">
         <p class="eyebrow accent">SKILLPRINT LIVE · HOTEL FRONT OFFICE</p>
         <h1>Zeigen, was jemand <em>wirklich kann.</em></h1>
         <p>Ein praktischer Hoteltest. Live beobachten. Entscheidungen nachvollziehen.</p>
-        <button class="primary calm-primary" data-action="create-advanced" aria-label="Live Multitasking Demo starten">Demo starten \${icon("arrow")}</button>
-        \${hasSession?\`<div class="calm-resume"><span>Letzte Demo</span><a href="\${href("control",active.id,active.coachToken)}">Fortsetzen \${icon("arrow")}</a><button class="outline" data-action="copy-candidate">Kandidatenlink kopieren</button></div>\`:""}
+        <button class="primary calm-primary" data-action="create-advanced" aria-label="Live Multitasking Demo starten">Demo starten ${icon("arrow")}</button>
+        ${hasSession?`<div class="calm-resume"><span>Letzte Demo</span><a href="${href("control",active.id,active.coachToken)}">Fortsetzen ${icon("arrow")}</a><button class="outline" data-action="copy-candidate">Kandidatenlink kopieren</button></div>`:""}
       </div>
       <div class="calm-hero-art" aria-hidden="true"><div class="calm-hotel-symbol">H</div><span>HOTEL AURORA</span><div class="calm-hero-strokes"><i></i><i></i><i></i></div></div>
     </section>
@@ -277,7 +277,7 @@ function dashboard() {
       <button class="outline" data-action="create">Einfache Rechnungssimulation starten</button>
       <p class="calm-disclaimer">Die Ergebnisse sind nicht als wissenschaftlich validierte Eignungsdiagnostik zu verstehen.</p>
     </details>
-  </div>\`;
+  </div>`;
 }
 function guestMessage(state) {
   return state.guestReply || (state.asked ? "Ich habe nur einmal gefrühstückt. Bitte prüfen Sie die doppelte Berechnung." : OPENING.de);
@@ -364,86 +364,86 @@ function control() {
   const s=snapshot.state,report=snapshot.report,finished=snapshot.status==="completed";
   const reportUrl=href("report",snapshot.id,tokenFor(current()));
   const liveEvents=snapshot.events.slice(-4).reverse();
-  return \`<div class="control-page calm-control">
+  return `<div class="control-page calm-control">
     <div class="page-heading calm-page-heading">
-      <div><p class="eyebrow">HOTEL AURORA · \${safe(snapshot.id)}</p><h1>Control Room</h1><p>Verfolgen Sie die Arbeit live. Jeder Schritt bleibt nachvollziehbar.</p></div>
+      <div><p class="eyebrow">HOTEL AURORA · ${safe(snapshot.id)}</p><h1>Control Room</h1><p>Verfolgen Sie die Arbeit live. Jeder Schritt bleibt nachvollziehbar.</p></div>
       <div class="heading-controls">
-        \${tag(finished?"Abgeschlossen":"Live",finished?"connected":"live")}
-        <button class="secondary" data-action="copy-candidate">\${icon("link")} Kandidatenlink</button>
+        ${tag(finished?"Abgeschlossen":"Live",finished?"connected":"live")}
+        <button class="secondary" data-action="copy-candidate">${icon("link")} Kandidatenlink</button>
       </div>
     </div>
     <div class="calm-control-top">
-      <div class="calm-status-line"><span><i class="calm-live-dot"></i> \${finished?"Test beendet":"Test läuft"}</span><b>\${snapshot.events.length} Ereignisse</b><a href="\${reportUrl}">Bericht ansehen \${icon("arrow")}</a></div>
+      <div class="calm-status-line"><span><i class="calm-live-dot"></i> ${finished?"Test beendet":"Test läuft"}</span><b>${snapshot.events.length} Ereignisse</b><a href="${reportUrl}">Bericht ansehen ${icon("arrow")}</a></div>
       <section class="panel calm-observer-main">
         <div class="panel-top"><div><p class="eyebrow">LIVE ÜBERSICHT</p><h2>Was passiert gerade?</h2></div></div>
-        \${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}
-        \${snapshot.mode==="multitask"&&s.opened?\`<details class="calm-details calm-observer-drawing" data-panel="live-drawing" \${openPanels.has("live-drawing")?"open":""}><summary>Markierungen auf der Rechnung ansehen <small>\${s.drawingCount} Linien</small></summary><div class="lab-observer-live-document">\${renderDrawingDocument(snapshot.events,false)}</div></details>\`:""}
+        ${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}
+        ${snapshot.mode==="multitask"&&s.opened?`<details class="calm-details calm-observer-drawing" data-panel="live-drawing" ${openPanels.has("live-drawing")?"open":""}><summary>Markierungen auf der Rechnung ansehen <small>${s.drawingCount} Linien</small></summary><div class="lab-observer-live-document">${renderDrawingDocument(snapshot.events,false)}</div></details>`:""}
       </section>
     </div>
     <section class="calm-recent">
-      <div class="calm-section-header"><div><p class="eyebrow">EREIGNISSE</p><h2>Letzte Aktionen</h2></div><span>\${snapshot.events.length} gesamt</span></div>
-      \${liveEvents.length?\`<div class="calm-feed">\${liveEvents.map(e=>eventLine(e,true)).join("")}</div>\`:\`<p class="calm-empty">Noch keine Aktion. Öffnen Sie den Kandidatenlink auf einem zweiten Gerät.</p>\`}
-      <details class="calm-details" data-panel="control-all-events" \${openPanels.has("control-all-events")?"open":""}>
-        <summary>Alle Ereignisse anzeigen <small>\${snapshot.events.length}</small></summary>
-        <div class="event-list calm-expanded-feed">\${snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join("")}</div>
+      <div class="calm-section-header"><div><p class="eyebrow">EREIGNISSE</p><h2>Letzte Aktionen</h2></div><span>${snapshot.events.length} gesamt</span></div>
+      ${liveEvents.length?`<div class="calm-feed">${liveEvents.map(e=>eventLine(e,true)).join("")}</div>`:`<p class="calm-empty">Noch keine Aktion. Öffnen Sie den Kandidatenlink auf einem zweiten Gerät.</p>`}
+      <details class="calm-details" data-panel="control-all-events" ${openPanels.has("control-all-events")?"open":""}>
+        <summary>Alle Ereignisse anzeigen <small>${snapshot.events.length}</small></summary>
+        <div class="event-list calm-expanded-feed">${snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join("")}</div>
       </details>
     </section>
-    <div class="calm-control-next"><div><h2>\${finished?"Test abgeschlossen":"Bereit zur Auswertung?"}</h2><p>\${finished?"Der Bericht zeigt die Schritte und ihre Belege.":"Der Bericht ist jederzeit verfügbar; Bewertungen erst nach Abschluss."}</p></div><a class="primary" href="\${reportUrl}">Evidence Report \${icon("arrow")}</a></div>
-    <details class="calm-details calm-tools" data-panel="control-tools" \${openPanels.has("control-tools")?"open":""}>
+    <div class="calm-control-next"><div><h2>${finished?"Test abgeschlossen":"Bereit zur Auswertung?"}</h2><p>${finished?"Der Bericht zeigt die Schritte und ihre Belege.":"Der Bericht ist jederzeit verfügbar; Bewertungen erst nach Abschluss."}</p></div><a class="primary" href="${reportUrl}">Evidence Report ${icon("arrow")}</a></div>
+    <details class="calm-details calm-tools" data-panel="control-tools" ${openPanels.has("control-tools")?"open":""}>
       <summary>Beobachternotiz und Bewertungsdetails <small>Optional</small></summary>
-      \${report.multitask?multitaskControl(s,report.multitask,finished):""}
+      ${report.multitask?multitaskControl(s,report.multitask,finished):""}
       <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><h2>Bewertungsübersicht</h2></div></div>
-        \${finished?\`<div class="rubric-mini">\${report.criteria.map(c=>\`<div class="rubric-mini-row"><span>\${safe(c.title)}</span><div class="mini-track"><i style="width:\${c.points/2*100}%"></i></div><b>\${c.points} / 2</b></div>\`).join("")}</div>\`:'<p>Die Rubrik wird nach Abschluss angezeigt.</p>'}
+        ${finished?`<div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div>`:'<p>Die Rubrik wird nach Abschluss angezeigt.</p>'}
       </section><section class="panel note-panel"><div class="panel-top"><div><h2>Beobachtung notieren</h2></div></div>
         <label class="field-label" for="observer-note">Konkrete Handlung dokumentieren</label><textarea id="observer-note" placeholder="Was haben Sie beobachtet?" rows="3"></textarea>
         <button class="secondary" data-action="note">Notiz speichern</button>
       </section></div>
     </details>
-  </div>\`;
+  </div>`;
 }
 function reportView() {
   if (!snapshot) return loading();
   if (snapshot.role !== "coach") return denied("Dieser Bereich ist nur über den Beobachterlink erreichbar.");
   const report=snapshot.report,finished=snapshot.status==="completed";
   const selected=snapshot.events.find(e=>e.id===chosenEvidence);
-  return \`<div class="report-page calm-report">
+  return `<div class="report-page calm-report">
     <div class="page-heading calm-page-heading">
-      <div><p class="eyebrow">HOTEL FRONT OFFICE · \${safe(snapshot.id)}</p><h1>Evidence Report</h1><p>Entscheidungen und Belege an einem Ort.</p></div>
-      <div class="heading-controls"><button class="outline" data-action="print">\${icon("file")} PDF / Drucken</button>
-        <button class="secondary" data-action="approve" \${!finished||snapshot.reviewStatus==="approved"?"disabled":""}>\${icon("check")} \${snapshot.reviewStatus==="approved"?"Geprüft":"Prüfung bestätigen"}</button></div>
+      <div><p class="eyebrow">HOTEL FRONT OFFICE · ${safe(snapshot.id)}</p><h1>Evidence Report</h1><p>Entscheidungen und Belege an einem Ort.</p></div>
+      <div class="heading-controls"><button class="outline" data-action="print">${icon("file")} PDF / Drucken</button>
+        <button class="secondary" data-action="approve" ${!finished||snapshot.reviewStatus==="approved"?"disabled":""}>${icon("check")} ${snapshot.reviewStatus==="approved"?"Geprüft":"Prüfung bestätigen"}</button></div>
     </div>
     <section class="calm-report-summary">
-      <div><span>STATUS</span><strong>\${snapshot.reviewStatus==="approved"?"Menschlich geprüft":finished?"Bereit zur Prüfung":"Test läuft"}</strong></div>
-      <div><span>ARBEITSPROBE (DEMO)</span><strong>\${finished?report.total+" / 100":"Noch offen"}</strong></div>
-      <div><span>NACHWEISE</span><strong>\${report.evidenceCount} Ereignisse</strong></div>
+      <div><span>STATUS</span><strong>${snapshot.reviewStatus==="approved"?"Menschlich geprüft":finished?"Bereit zur Prüfung":"Test läuft"}</strong></div>
+      <div><span>ARBEITSPROBE (DEMO)</span><strong>${finished?report.total+" / 100":"Noch offen"}</strong></div>
+      <div><span>NACHWEISE</span><strong>${report.evidenceCount} Ereignisse</strong></div>
     </section>
     <section class="panel calm-criteria">
       <div class="calm-section-header"><div><p class="eyebrow">AUFGABENBEWERTUNG</p><h2>Was wurde beobachtet?</h2></div></div>
       <p class="calm-context-note">Die Punkte sind illustrative Aufgabenwerte, keine Eignungswahrscheinlichkeit.</p>
       <div class="calm-criteria-list">
-        \${report.criteria.map(c=>\`<article class="calm-criterion">
-          <div><h3>\${safe(c.title)}</h3><p>\${c.evidence.length?c.evidence.length+" dokumentierte Belege":"Noch kein Beleg"}</p></div>
-          <div class="calm-criterion-right">\${finished?\`<b>\${c.points} / 2</b>\`:'<span>Offen</span>'}
-          \${c.evidence.length?\`<button class="evidence-link" data-evidence="\${safe(c.evidence[0])}">Beleg ansehen</button>\`:""}</div>
-          <details class="calm-criterion-detail"><summary>Begründung</summary><p>\${safe(c.reason)}</p></details>
-        </article>\`).join("")}
+        ${report.criteria.map(c=>`<article class="calm-criterion">
+          <div><h3>${safe(c.title)}</h3><p>${c.evidence.length?c.evidence.length+" dokumentierte Belege":"Noch kein Beleg"}</p></div>
+          <div class="calm-criterion-right">${finished?`<b>${c.points} / 2</b>`:'<span>Offen</span>'}
+          ${c.evidence.length?`<button class="evidence-link" data-evidence="${safe(c.evidence[0])}">Beleg ansehen</button>`:""}</div>
+          <details class="calm-criterion-detail"><summary>Begründung</summary><p>${safe(c.reason)}</p></details>
+        </article>`).join("")}
       </div>
     </section>
-    <details class="calm-details calm-report-section" data-panel="report-replay" \${openPanels.has("report-replay")?"open":""}>
+    <details class="calm-details calm-report-section" data-panel="report-replay" ${openPanels.has("report-replay")?"open":""}>
       <summary><span>Replay & Timeline</span><small>Schrittweise zurückgehen</small></summary>
-      \${snapshot.mode==="multitask"?renderReplayWidget(snapshot.events,replaySequence??snapshot.events.at(-1)?.sequence??0):""}
+      ${snapshot.mode==="multitask"?renderReplayWidget(snapshot.events,replaySequence??snapshot.events.at(-1)?.sequence??0):""}
       <section class="panel calm-full-timeline"><div class="panel-top"><h2>Alle Aktionen</h2></div>
-        <div class="event-list">\${snapshot.events.map(e=>eventLine(e,true)).join("")||"<p>Keine Ereignisse vorhanden.</p>"}</div>
-        \${selected?\`<div class="evidence-detail"><p class="eyebrow">GEWÄHLTER BELEG</p><h3>\${safe(ACTION_LABELS[selected.type]||selected.type)}</h3><p>\${fmt(selected.at)} · Event #\${selected.sequence}</p><details><summary>Rohdaten anzeigen</summary><pre>\${safe(JSON.stringify(selected.payload,null,2))}</pre></details></div>\`:""}
+        <div class="event-list">${snapshot.events.map(e=>eventLine(e,true)).join("")||"<p>Keine Ereignisse vorhanden.</p>"}</div>
+        ${selected?`<div class="evidence-detail"><p class="eyebrow">GEWÄHLTER BELEG</p><h3>${safe(ACTION_LABELS[selected.type]||selected.type)}</h3><p>${fmt(selected.at)} · Event #${selected.sequence}</p><details><summary>Rohdaten anzeigen</summary><pre>${safe(JSON.stringify(selected.payload,null,2))}</pre></details></div>`:""}
       </section>
     </details>
-    <details class="calm-details calm-report-section" data-panel="report-extras" \${openPanels.has("report-extras")?"open":""}>
+    <details class="calm-details calm-report-section" data-panel="report-extras" ${openPanels.has("report-extras")?"open":""}>
       <summary><span>Weitere Nachweise</span><small>Lernsequenz, Markierungen und zusätzliche Kriterien</small></summary>
-      \${report.multitask?multitaskReport(report.multitask):""}
-      \${snapshot.mode==="multitask"?renderReportAppendix(snapshot.events):""}
+      ${report.multitask?multitaskReport(report.multitask):""}
+      ${snapshot.mode==="multitask"?renderReportAppendix(snapshot.events):""}
     </details>
     <p class="calm-disclaimer">Nur fiktive Testdaten. Fachliche Validierung und Datenschutzprüfung stehen aus; über eine Einstellung entscheidet ausschließlich ein Mensch.</p>
-  </div>\`;
+  </div>`;
 }
 function loading() { return '<div class="loading-screen"><div class="loader"></div><h2>Sitzung wird geladen</h2><p>Die freigegebenen Testdaten werden abgerufen.</p></div>'; }
 function denied(text) { return `<div class="loading-screen"><div class="error-symbol">!</div><h2>Zugriff nicht möglich</h2><p>${safe(text)}</p><a class="primary" href="#/dashboard">Zur Übersicht</a></div>`; }
