@@ -60,9 +60,21 @@ assert.equal(styleResponse.status, 200, "Stylesheet cannot be fetched");
 assert.match(styleResponse.headers.get("content-type") || "", /css/i, "Stylesheet URL returned a non-CSS MIME type");
 console.log("PASS: live Pages HTML, JavaScript and CSS assets all reachable", mainURL.pathname);
 const publishedStyle=await styleResponse.text();
-assert.ok(publishedStyle.includes(".lux-ambient") && publishedStyle.includes(".lux-orbit") && publishedStyle.includes("prefers-reduced-motion"),
- "STALE CLOUDFLARE PAGES: cinematic gradient/particle stylesheet not yet deployed.");
-console.log("PASS: published cinematic particles, gradient and reduced-motion CSS loaded");
+assert.ok(publishedStyle.includes(".skillprint-art") && publishedStyle.includes(".fd-cockpit") && publishedStyle.includes("prefers-reduced-motion"),
+ "STALE CLOUDFLARE PAGES: Graphite Studio stylesheet not yet deployed.");
+console.log("PASS: published Graphite Studio, workspace and reduced-motion CSS loaded");
+
+// Raw-source Pages and Vite builds must both serve actual font bytes, rather
+// than silently returning the SPA HTML document for a missing public asset.
+const fonts = [...html.matchAll(/<link\b[^>]*\brel=["']preload["'][^>]*\bhref=["']([^"']+\.woff2)["']/gi)];
+assert.ok(fonts.length > 0, "Missing local typography preload");
+for (const font of fonts) {
+  const response = await fetch(new URL(font[1], site), { signal: AbortSignal.timeout(20000) });
+  assert.equal(response.status, 200, "Local font is unavailable");
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  assert.deepEqual([...bytes.slice(0,4)], [119,79,70,50], "Font path returned non-WOFF2 data, likely the SPA fallback");
+}
+console.log("PASS: published typography serves real WOFF2 data");
 
 const hasMultitask = scriptBody.includes("Live Multitasking Demo starten");
 const hasOldButton = scriptBody.includes("Neue Demo-Sitzung starten");

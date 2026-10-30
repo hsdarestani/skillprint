@@ -3,15 +3,27 @@ import { SCENARIO, ACTION_LABELS, journeyProgress } from "./engine.js";
 import { renderServiceChat } from "./service-ui.js";
 import { renderDrawingPanel,renderLearningPanel } from "./evidence-lab.js";
 
+function studioIcon(name) {
+ const paths={
+   guest:'<circle cx="12" cy="8" r="3.5"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/>',
+   arrival:'<path d="M14 4h5v16h-5M3 12h12m-4-4 4 4-4 4"/>',
+   phone:'<path d="m7 3 3 5-3 3a16 16 0 0 0 6 6l3-3 5 3-1 4C10 23 1 14 3 4z"/>',
+   invoice:'<path d="M6 2h8l5 5v15H6zM14 2v6h5M9 13h7M9 17h7"/>',
+   learning:'<path d="m2 9 10-5 10 5-10 5zM6 11v6c4 3 8 3 12 0v-6M22 9v8"/>',
+   handover:'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+ };
+ return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.guest}</svg>`;
+}
+
 // A presentation layer only. All decisions still use the existing role-protected,
 // ordered event ledger and human-reviewed rubric; no new synthetic achievements.
 const TABS = [
-  {id:"guest",label:"Gast",icon:"◉"},
-  {id:"arrival",label:"Check-in",icon:"▣"},
-  {id:"phone",label:"Telefon",icon:"⌁"},
-  {id:"invoice",label:"Rechnung",icon:"▤"},
-  {id:"learning",label:"Lernen",icon:"◈"},
-  {id:"handover",label:"Abschluss",icon:"✓"},
+  {id:"guest",label:"Gast",icon:studioIcon("guest")},
+  {id:"arrival",label:"Check-in",icon:studioIcon("arrival")},
+  {id:"phone",label:"Telefon",icon:studioIcon("phone")},
+  {id:"invoice",label:"Rechnung",icon:studioIcon("invoice")},
+  {id:"learning",label:"Lernen",icon:studioIcon("learning")},
+  {id:"handover",label:"Abschluss",icon:studioIcon("handover")},
 ];
 export const STUDIO_TABS = TABS.map(x=>x.id);
 export function studioActiveTab(value) {
@@ -41,7 +53,7 @@ function people(state,active,safe){
 }
 function station(id,title,detail,icon,active,urgent,done){
   return `<button type="button" data-studio-tab="${id}" class="fd-station ${active===id?"fd-current":""} ${urgent?"fd-ringing":""}">
-    <span class="fd-station-icon">${icon}</span><span class="fd-station-text"><b>${title}</b><small>${detail}</small></span>
+    <span class="fd-station-icon">${studioIcon(id)}</span><span class="fd-station-text"><b>${title}</b><small>${detail}</small></span>
     <span class="fd-station-state">${done?"✓":urgent?"●":"→"}</span></button>`;
 }
 function guestPanel(s,renderChat) {
@@ -166,6 +178,6 @@ export function renderStudioObserver(snapshot,{safe,fmt}) {
   {icon:"▤",title:"Rechnung",detail:state.corrected?"Korrigiert":state.opened?"In Prüfung":"Geschützt",done:state.corrected,active:state.opened&&!state.corrected}
  ];
  return `<div class="fd-observer-mirror"><div class="fd-observer-banner"><span><i></i> LIVE</span><b>AURORA</b></div><div class="fd-observer-grid">
- ${items.map(x=>`<div class="fd-observer-tile ${x.active?"fd-observer-active":""}"><span class="fd-observer-icon">${x.icon}</span><div><b>${x.title}</b><p>${x.detail}</p></div><span class="fd-observer-tick">${x.done?"✓":x.active?"●":"○"}</span></div>`).join("")}
+ ${items.map((x,i)=>`<div class="fd-observer-tile ${x.active?"fd-observer-active":""}"><span class="fd-observer-icon">${studioIcon(["guest","arrival","phone","invoice"][i])}</span><div><b>${x.title}</b><p>${x.detail}</p></div><span class="fd-observer-tick">${x.done?"✓":x.active?"●":"○"}</span></div>`).join("")}
  </div><div class="fd-observer-footer"><div><small>LETZTES EVENT</small><b>${safe(ACTION_LABELS[snapshot.events.at(-1)?.type]||"Noch keine Handlung")}</b></div><span>${snapshot.events.length} Events</span></div></div>`;
 }

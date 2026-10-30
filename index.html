@@ -3,21 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#080f19" />
+  <meta name="theme-color" content="#f6f6f3" />
   <meta name="referrer" content="no-referrer" />
   <meta name="description" content="SKILLPRINT LIVE — Evidenzbasierte Arbeitsproben statt Bauchgefühl." />
   <title>SKILLPRINT LIVE · Skill Assessment Studio</title>
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preload" href="/src/assets/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="icon" href="/src/assets/mark.svg" type="image/svg+xml" />
   <style>
-    html,body{margin:0;min-height:100%;background:#080f19;color:#f1f4f5;font:15px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}
-    .boot-shell{min-height:100vh;display:grid;place-items:center;padding:22px;box-sizing:border-box;background:radial-gradient(ellipse at 50% 25%,#1d3548 0%,#080f19 65%)}
-    .boot-panel{width:min(100%,560px);background:#132334;border:1px solid #3c4e5b;border-radius:18px;padding:clamp(23px,5vw,44px);box-sizing:border-box;box-shadow:0 25px 90px #0004}
-    .boot-kicker{color:#d1ad73;font-size:11px;font-weight:700;letter-spacing:.24em}
-    .boot-panel h1{font-size:clamp(24px,4vw,38px);line-height:1.2;letter-spacing:-.05em;margin:22px 0}
-    .boot-panel p{color:#a9b9c6;font-size:14px;margin:0 0 16px}
-    .boot-status{font-size:12px;color:#7edac5;padding-top:16px;border-top:1px solid #3c4e5b}
-    .boot-panel code{color:#e9ceaa;font-size:12px;overflow-wrap:anywhere}
-    #boot-error-details{white-space:pre-wrap;font-size:12px;color:#ffa99f;margin-top:15px;overflow-wrap:anywhere}
+    html,body{margin:0;min-height:100%;background:#f6f6f3;color:#242528;font:15px/1.65 -apple-system,BlinkMacSystemFont,Inter,"Segoe UI",sans-serif}
+    .boot-shell{min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
+    .boot-panel{width:min(100%,520px);padding:clamp(25px,5vw,42px);box-sizing:border-box}
+    .boot-kicker{color:#245cd6;font-size:11px;font-weight:550;letter-spacing:.2em}
+    .boot-panel h1{font-size:clamp(28px,4vw,40px);font-weight:500;line-height:1.14;letter-spacing:-.05em;margin:24px 0}
+    .boot-panel p{color:#606875;font-size:13px;margin:0 0 20px;line-height:1.8}
+    .boot-status{font-size:11px;color:#6d7c95;padding-top:20px;border-top:1px solid #dddfe3}
+    .boot-panel code{color:#245cd6;font-size:12px;overflow-wrap:anywhere}
+    #boot-error-details{white-space:pre-wrap;font-size:11px;color:#b0393f;margin-top:16px;overflow-wrap:anywhere}
   </style>
   <script>
     // A visible fallback even if Pages publishes raw source instead of the Vite dist/ folder.
@@ -30,7 +31,7 @@
         if (heading) heading.textContent = "Die Oberfläche konnte nicht gestartet werden.";
         if (status) {
           status.textContent = "Deploy-Einstellungen prüfen: Build command npm run build · Output directory dist";
-          status.style.color = "#ffa99f";
+          status.style.color = "#b0393f";
         }
         var detail = document.getElementById("boot-error-details");
         if (detail) detail.textContent = message ? "Fehlerhinweis: " + String(message).slice(0,280) : "";
@@ -52,8 +53,7 @@
       }, 6000);
     })();
   </script>
-  <link rel="stylesheet" href="/src/style.css?v=premium-cinematic-20261030" />
-  <link rel="stylesheet" href="/src/cinematic-ui.css?v=premium-cinematic-20261030" />
+  <link rel="stylesheet" href="/src/style.css?v=graphite-studio-20261030" />
 </head>
 <body>
   <div id="app">
@@ -61,12 +61,12 @@
       <div class="boot-panel">
         <div class="boot-kicker">SKILLPRINT / LIVE</div>
         <h1>Das Assessment Studio wird vorbereitet.</h1>
-        <p>Die interaktive Oberfläche wird geladen. Falls diese Meldung bestehen bleibt, sind wahrscheinlich die Cloudflare Pages Build-Einstellungen nicht korrekt.</p>
+        <p>Ihre Arbeitsumgebung ist gleich bereit.</p>
         <div class="boot-status">Verbindung zur Anwendung wird hergestellt …</div>
         <div id="boot-error-details" role="alert"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="/src/main.js?v=premium-cinematic-20261030"></script>
+  <script type="module" src="/src/main.js?v=graphite-studio-20261030"></script>
 </body>
 </html>
