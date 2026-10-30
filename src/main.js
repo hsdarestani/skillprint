@@ -238,27 +238,34 @@ function sidebar(r) {
   const report = active?.id && active?.coachToken ? href("report",active.id,active.coachToken) : "#/dashboard";
   return `<aside class="sidebar"><p class="eyebrow">WORKSPACE / 01</p><a class="nav-item ${selected==="dashboard"?"chosen":""}" href="#/dashboard"><span class="nav-glyph">◫</span> Übersicht</a><a class="nav-item ${selected==="control"?"chosen":""}" href="${coach}"><span class="nav-glyph">◉</span> Live Control Room</a><a class="nav-item ${selected==="report"?"chosen":""}" href="${report}"><span class="nav-glyph">▤</span> Evidence Report</a><div class="sidebar-bottom"><span class="tiny-orbit">✳</span><p>Evidence over intuition.</p><small>ENGINE / HOTEL V1.2</small></div></aside>`;
 }
-function footer() { return `<footer class="footer"><span>SKILLPRINT LIVE <i>·</i> SPRINT 2 · MULTITASK</span><span>DEMONSTRATOR · Keine echten Bewerberdaten</span><span>© 2026</span></footer>`; }
+function footer() { return `<footer class="footer"><span>SKILLPRINT LIVE</span><span>Demo · Nur fiktive Daten</span></footer>`; }
 function dashboard() {
-  const inProgress = active?.id;
-  return `<div class="dashboard">
-    <div class="hero"><div class="hero-glow"></div><div class="hero-inner">
-      <div class="eyebrow accent"><span class="pulse-dot"></span> THE FUTURE OF PRACTICAL ASSESSMENT</div>
-      <h1>Arbeit sichtbar machen.<br><em>Potenzial belegbar prüfen.</em></h1>
-      <p>Keine Bauchgefühl-Interviews. Sondern realistische Arbeitsproben, ein synchroner Beobachtungsraum und jede Aussage verknüpft mit dem tatsächlichen Arbeitsschritt.</p>
-      <div class="hero-actions"><button class="primary" data-action="create-advanced">${icon("play")} Live Multitasking Demo starten</button><button class="ghost-btn" data-action="create">Klassische Demo</button><a class="ghost-btn" href="#workflows">Das Konzept entdecken ${icon("arrow")}</a></div>
-      <div class="hero-proof"><span>◉ LIVE EVENT STREAM</span><span>✧ EVIDENCE LINKED</span><span>⌑ HUMAN IN CONTROL</span></div>
-    </div><div class="hero-illustration" aria-hidden="true"><div class="simulation-head"><span>SKILLPRINT / LIVE SESSION</span><span class="live-chip">● LIVE</span></div><div class="simulation-body"><div class="sim-line long"></div><div class="sim-line"></div><div class="sim-card"><div class="sim-dot"></div><span>IDENTITY CHECK</span><b>VERIFIED</b></div><div class="sim-card"><div class="sim-dot"></div><span>INVOICE REVIEW</span><b>220.00 EUR</b></div><div class="sim-card active"><div class="sim-dot"></div><span>EVIDENCE STREAM</span><b>CONNECTED</b></div><div class="sim-chart"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
-    </div>
-    ${inProgress ? `<section class="resume-card"><div><p class="eyebrow">AKTIVE DEMO</p><h2>Session ${safe(active.id)}</h2><p>Die Links öffnen echte Rollenansichten; der Kandidatenlink kann geteilt werden.</p></div><div class="resume-actions"><a class="secondary" href="${href("control",active.id,active.coachToken)}">Control Room öffnen ${icon("arrow")}</a><button class="outline" data-action="copy-candidate">${icon("link")} Kandidatenlink kopieren</button></div></section>` : ""}
-    <div class="section-head" id="workflows"><div><p class="eyebrow">THE ASSESSMENT SYSTEM</p><h2>Ein Workflow. <span>Klare Entscheidungen.</span></h2></div><p>Eine durchgängige Erfahrung für Kandidat, Beobachter und Fachverantwortliche.</p></div>
-    <div class="feature-grid">
-      <article class="feature-card"><div class="feature-index">01 / WORK</div><div class="feature-icon">⌘</div><h3>Job Simulation</h3><p>Eine echte Aufgabe statt abstrakter Multiple-Choice-Fragen. Fachliche Handlungsschritte werden nachvollziehbar.</p><span>Hotel Front Office / Demo</span></article>
-      <article class="feature-card"><div class="feature-index">02 / OBSERVE</div><div class="feature-icon">◎</div><h3>Live Control Room</h3><p>Strukturierte Aktionen erscheinen nahezu in Echtzeit bei autorisierten Beobachtern, ohne private Geräteinhalte.</p><span>Event-basierte Synchronisation</span></article>
-      <article class="feature-card"><div class="feature-index">03 / PROVE</div><div class="feature-icon">≋</div><h3>Evidence Replay</h3><p>Jede Rubrik-Aussage springt zu den relevanten Ereignissen. Fehlende Belege bleiben ausdrücklich sichtbar.</p><span>Menschliche Freigabe nötig</span></article>
-    </div>
-    <div class="demo-brief"><div><p class="eyebrow accent">FIRST VERTICAL SLICE</p><h2>Ein Gast. Eine fehlerhafte Rechnung.<br><em>Viele beobachtbare Entscheidungen.</em></h2><p>Ein realitätsnaher Demonstrator aus dem Pflichtenheft: Identität prüfen, doppelt berechnetes Frühstück entdecken, Rechnung korrigieren und die Antwort dokumentieren.</p><button class="primary" data-action="create-advanced">Multitask Simulation starten ${icon("arrow")}</button></div><div class="brief-panel"><span>ASSESSMENT BRIEF</span><h3>Front Office Agent</h3><div class="brief-row"><small>SCENARIO</small><b>Invoice discrepancy</b></div><div class="brief-row"><small>RUBRIC</small><b>5 Kriterien / 100 Punkte</b></div><div class="brief-row"><small>MODALITY</small><b>Browser · Tablet</b></div><div class="brief-row"><small>STATUS</small><b>Illustrative Demo</b></div></div></div>
-  </div>`;
+  const hasSession = Boolean(active?.id && active?.coachToken);
+  return \`<div class="dashboard calm-dashboard">
+    <section class="calm-hero">
+      <div class="calm-hero-content">
+        <p class="eyebrow accent">SKILLPRINT LIVE · HOTEL FRONT OFFICE</p>
+        <h1>Zeigen, was jemand <em>wirklich kann.</em></h1>
+        <p>Ein praktischer Hoteltest. Live beobachten. Entscheidungen nachvollziehen.</p>
+        <button class="primary calm-primary" data-action="create-advanced" aria-label="Live Multitasking Demo starten">Demo starten \${icon("arrow")}</button>
+        \${hasSession?\`<div class="calm-resume"><span>Letzte Demo</span><a href="\${href("control",active.id,active.coachToken)}">Fortsetzen \${icon("arrow")}</a><button class="outline" data-action="copy-candidate">Kandidatenlink kopieren</button></div>\`:""}
+      </div>
+      <div class="calm-hero-art" aria-hidden="true"><div class="calm-hotel-symbol">H</div><span>HOTEL AURORA</span><div class="calm-hero-strokes"><i></i><i></i><i></i></div></div>
+    </section>
+    <section class="calm-how">
+      <h2>So funktioniert die Demo</h2>
+      <div class="calm-three">
+        <div><span>01</span><h3>Test starten</h3><p>Kandidatenlink öffnen.</p></div>
+        <div><span>02</span><h3>Live beobachten</h3><p>Entscheidungen und Gespräche sehen.</p></div>
+        <div><span>03</span><h3>Belege prüfen</h3><p>Jeden Schritt im Bericht wiederfinden.</p></div>
+      </div>
+    </section>
+    <details class="calm-details calm-dashboard-extra"><summary>Weitere Möglichkeiten <span>Details anzeigen</span></summary>
+      <p>Der Test ist eine Demo mit fiktiven Hotelgästen. Es werden keine echten Bewerberdaten benötigt.</p>
+      <button class="outline" data-action="create">Einfache Rechnungssimulation starten</button>
+      <p class="calm-disclaimer">Die Ergebnisse sind nicht als wissenschaftlich validierte Eignungsdiagnostik zu verstehen.</p>
+    </details>
+  </div>\`;
 }
 function guestMessage(state) {
   return state.guestReply || (state.asked ? "Ich habe nur einmal gefrühstückt. Bitte prüfen Sie die doppelte Berechnung." : OPENING.de);
