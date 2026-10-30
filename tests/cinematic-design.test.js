@@ -19,7 +19,7 @@ test("one primary CTA; legacy demo and links remain tucked into optional tools",
  assert.match(landing,/lux-extras/);
  assert.match(landing,/Mehr Optionen/);
  assert.match(landing,/data-action="create"/);
- assert.doesNotMatch(landing,/Kandidatenlink kopieren<\/button>/);
+ assert.ok(landing.indexOf("data-action=\"copy-candidate\"") > landing.indexOf("<details class=\"calm-details"));
 });
 test("Control Room has one main report action and accessible icon-only link control",()=>{
  const control=block("function control()","function reportView()");
