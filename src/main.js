@@ -57,6 +57,7 @@ function localSnapshot(id, token) {
 }
 async function startSession(mode = "classic") {
   studioTab = "guest";
+  openPanels.clear();
   for (const id of Object.keys(studioDrafts)) delete studioDrafts[id];
   let data;
   if (REMOTE) {
@@ -194,6 +195,7 @@ async function navigate() {
   if (r.id !== lastStudioSession) {
     lastStudioSession = r.id;
     studioTab = "guest";
+    openPanels.clear();
     replaySequence=null;
     for (const id of Object.keys(studioDrafts)) delete studioDrafts[id];
   }
@@ -229,9 +231,18 @@ function icon(name) {
   return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.sparkle}</svg>`;
 }
 function header(r) {
-  const coach = active?.id && active?.coachToken ? href("control",active.id,active.coachToken) : "#/dashboard";
-  const report = active?.id && active?.coachToken ? href("report",active.id,active.coachToken) : "#/dashboard";
-  return `<header class="topbar"><a class="brand" href="#/dashboard" aria-label="SKILLPRINT LIVE"><span class="brand-mark">S<span class="brand-star">✦</span></span><span class="brand-name"><b>SKILLPRINT</b><span>LIVE</span></span></a><nav aria-label="Hauptnavigation"><a href="#/dashboard" class="${r.view==="dashboard"?"active":""}">Übersicht</a><a href="${coach}" class="${r.view==="control"?"active":""}">Control Room</a><a href="${report}" class="${r.view==="report"?"active":""}">Evidence Report</a></nav><span class="header-right">${tag(!REMOTE?"LOKALE VORSCHAU":apiHealth==="online"?"BACKEND ONLINE":apiHealth==="checking"?"VERBINDUNG WIRD GEPRÜFT":"BACKEND OFFLINE",apiHealth==="online"?"connected":apiHealth==="offline"?"live":"muted")}</span></header>`;
+  const coach=active?.id&&active?.coachToken?href("control",active.id,active.coachToken):"#/dashboard";
+  const report=active?.id&&active?.coachToken?href("report",active.id,active.coachToken):"#/dashboard";
+  const candidate=r.view==="candidate";
+  return \`<header class="topbar calm-topbar">
+    <a class="brand" href="#/dashboard" aria-label="SKILLPRINT LIVE"><span class="brand-mark">S<span class="brand-star">✦</span></span><span class="brand-name"><b>SKILLPRINT</b><span>LIVE</span></span></a>
+    \${candidate?\`<span class="calm-candidate-label">Hotel Aurora · Demo</span>\`:\`<nav aria-label="Hauptnavigation">
+      <a href="#/dashboard" class="\${r.view==="dashboard"?"active":""}">Start</a>
+      <a href="\${coach}" class="\${r.view==="control"?"active":""}">Live</a>
+      <a href="\${report}" class="\${r.view==="report"?"active":""}">Bericht</a>
+    </nav>\`}
+    \${apiHealth==="offline"?'<span class="header-right">'+tag("Verbindung unterbrochen","live")+'</span>':""}
+  </header>\`;
 }
 function sidebar(r) {
   const selected = r.view;
@@ -306,7 +317,7 @@ function candidateView() {
     return renderFrontDeskStudio(snapshot,{
       activeTab:studioTab,
       renderChat:()=>guestChatPanel(snapshot.events,snapshot.state),
-      serviceLocale:guestLocale,serviceBusy,
+      serviceLocale:guestLocale,serviceBusy,expandedPanels:openPanels,
       safe,euro,fmt
     });
   }
@@ -449,7 +460,7 @@ function draw() {
       if (r.view === "candidate" && snapshot?.mode === "multitask") studioDrafts[id]=input.value;
     }
   }
-  root.innerHTML = `${header(r)}<div class="app-grid">${isCandidate?"":sidebar(r)}<main class="${isCandidate?"full-width":""}">${apiHealth==="offline"?'<div class="notice" role="alert">Realtime-Backend nicht erreichbar. Bitte Cloudflare Worker prüfen.</div>':""}${notification?`<div class="notice" role="alert">${safe(notification)} <button data-action="dismiss">×</button></div>`:""}${body}${footer()}</main></div>`;
+  root.innerHTML = `${header(r)}<div class="app-grid calm-app-grid"><main class="${isCandidate?"full-width":""}">${apiHealth==="offline"?'<div class="notice" role="alert">Realtime-Backend nicht erreichbar. Bitte Cloudflare Worker prüfen.</div>':""}${notification?`<div class="notice" role="alert">${safe(notification)} <button data-action="dismiss">×</button></div>`:""}${body}${footer()}</main></div>`;
   const restore = r.view === "candidate" && snapshot?.mode === "multitask" ? studioDrafts : editable;
   for (const [id,value] of Object.entries(restore)) {
     const input = document.getElementById(id);
