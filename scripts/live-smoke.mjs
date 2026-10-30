@@ -59,6 +59,11 @@ const styleResponse = await fetch(new URL(styles.at(-1)[1], site), { signal: Abo
 assert.equal(styleResponse.status, 200, "Stylesheet cannot be fetched");
 assert.match(styleResponse.headers.get("content-type") || "", /css/i, "Stylesheet URL returned a non-CSS MIME type");
 console.log("PASS: live Pages HTML, JavaScript and CSS assets all reachable", mainURL.pathname);
+const publishedStyle=await styleResponse.text();
+assert.ok(publishedStyle.includes(".lux-ambient") && publishedStyle.includes(".lux-orbit") && publishedStyle.includes("prefers-reduced-motion"),
+ "STALE CLOUDFLARE PAGES: cinematic gradient/particle stylesheet not yet deployed.");
+console.log("PASS: published cinematic particles, gradient and reduced-motion CSS loaded");
+
 const hasMultitask = scriptBody.includes("Live Multitasking Demo starten");
 const hasOldButton = scriptBody.includes("Neue Demo-Sitzung starten");
 console.log("DEPLOYED FRONTEND:",JSON.stringify({asset:mainURL.pathname,hasMultitask,hasOldButton,bytes:scriptBody.length}));
@@ -68,7 +73,7 @@ const calmUI = scriptBody.includes("calm-dashboard") && scriptBody.includes("cal
 assert.ok(calmUI, "STALE PAGES: simplified Ashkan UX release has not reached the public frontend.");
 console.log("PASS: published site includes the calm dashboard, Control Room and report");
 
-let hasFrontDeskStudio = scriptBody.includes("fd-cockpit") && scriptBody.includes("Ihr Arbeitsplatz.");
+let hasFrontDeskStudio = scriptBody.includes("fd-cockpit") && (scriptBody.includes("Front Desk.") || scriptBody.includes("Ihr Arbeitsplatz."));
 // In the current source-module Pages deployment, main.js IMPORTS a second
 // script. A built Vite bundle includes the studio inline; handle either format.
 if (!hasFrontDeskStudio && scriptBody.includes("frontdesk-studio.js")) {
@@ -76,7 +81,7 @@ if (!hasFrontDeskStudio && scriptBody.includes("frontdesk-studio.js")) {
   const studioResponse = await fetch(studioURL,{signal:AbortSignal.timeout(20000)});
   const studioContent = studioResponse.ok ? await studioResponse.text() : "";
   hasFrontDeskStudio = studioResponse.ok && /javascript/i.test(studioResponse.headers.get("content-type")||"") &&
-    studioContent.includes("fd-cockpit") && studioContent.includes("Ihr Arbeitsplatz.");
+    studioContent.includes("fd-cockpit") && (studioContent.includes("Front Desk.") || studioContent.includes("Ihr Arbeitsplatz."));
 }
 console.log("FRONT DESK RELEASE:",JSON.stringify({hasFrontDeskStudio,main:mainURL.pathname}));
 assert.ok(hasFrontDeskStudio, "Cloudflare Pages still serves an older frontend without Sprint 3 Front Desk Studio.");

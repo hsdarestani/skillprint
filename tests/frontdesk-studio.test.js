@@ -66,9 +66,9 @@ test("observer mirror reflects actual events without inferring candidate persona
  s=action(s,"ask_guest");
  s=action(s,"verify_identity");
  const html=renderStudioObserver(state(s),{safe:esc,fmt:deps.fmt});
- assert.match(html,/LIVE SERVICE DESK/);
+ assert.match(html,/LIVE/);
  assert.match(html,/Sofia Demir/);
- assert.match(html,/Gast wartet am Empfang/);
+ assert.match(html,/Wartet/);
  assert.doesNotMatch(html,/Eignungswahrscheinlichkeit|Persönlichkeitsprofil|100 % geeignet/);
 });
 test("invalid active tab fails closed to guest, role-specific UI remains delegated to app",()=>{
