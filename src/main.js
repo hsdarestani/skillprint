@@ -26,6 +26,7 @@ let serviceBusy = false;
 let studioTab = "guest";
 let replaySequence = null;
 let activeStroke = null;
+const openPanels = new Set();
 let lastStudioSession = "";
 const studioDrafts = Object.create(null);
 const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel("skillprint-demo") : null;
@@ -348,19 +349,46 @@ function mirror(s) {
 }
 function control() {
   if (!snapshot) return loading();
-  if (snapshot.role !== "coach") return denied("Dieser Bereich ist nur über einen autorisierten Beobachterlink erreichbar.");
-  const s = snapshot.state, report = snapshot.report;
-  const scoringReady = snapshot.status === "completed";
-  return `<div class="control-page"><div class="page-heading"><div><p class="eyebrow">LIVE ASSESSMENT / ${safe(snapshot.id)}</p><h1>Control Room <span class="title-outline">/ 01</span></h1><p>Beobachten Sie Arbeitsschritte, dokumentieren Sie Fakten und springen Sie anschließend direkt zum Beleg.</p></div><div class="heading-controls">${tag(snapshot.status==="completed"?"SESSION COMPLETED":"SESSION RUNNING",snapshot.status==="completed"?"connected":"live")}<button class="outline" data-action="copy-candidate">${icon("link")} Kandidatenlink</button></div></div>
-    <div class="metrics-row"><div class="metric"><span>LIVE EREIGNISSE</span><strong>${snapshot.events.length.toString().padStart(2,"0")}</strong><small>Zeitgestempelte Actions</small></div><div class="metric"><span>ARBEITSPROBE / DEMO</span><strong>${scoringReady?report.total:"—"}${scoringReady?"<small> / 100</small>":""}</strong><small>${scoringReady?"Nicht validierter Übungswert":"Bewertung nach Abschluss"}</small></div><div class="metric"><span>BEOBACHTERSTATUS</span><strong class="metric-word">Verbunden</strong><small>Rollenbasierter Zugriff</small></div><div class="metric"><span>REPORTSTATUS</span><strong class="metric-word">${snapshot.reviewStatus==="approved"?"Geprüft":"Offen"}</strong><small>Human Review erforderlich</small></div></div>
-    <div class="control-grid"><section class="panel primary-panel"><div class="panel-top"><div><p class="eyebrow">A / SYNCHRONISIERTE TESTANSICHT</p><h2>Candidate workspace</h2></div><span class="stream-indicator"><i></i> ${REMOTE?"REMOTE STREAM":"LOCAL EVENT MIRROR"}</span></div>${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}${snapshot.mode==="multitask"&&s.opened?`<div class="lab-observer-live-document"><div class="lab-observer-heading"><span>LIVE DOKUMENT / RECHNUNG</span><b>${s.drawingCount} Stiftlinien · Zeitgestempelt</b></div>${renderDrawingDocument(snapshot.events,false)}</div>`:""}</section>
-      <aside class="panel evidence-panel"><div class="panel-top"><div><p class="eyebrow">B / LIVE EVENT STREAM</p><h2>Timeline</h2></div><span class="event-counter">${snapshot.events.length} EVENTS</span></div><div class="event-list">${snapshot.events.length?snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join(""):`<div class="empty-events"><div>◎</div><b>Warten auf die erste Aktion</b><p>Öffnen Sie den Kandidatenlink auf einem zweiten Gerät und starten Sie den Test.</p></div>`}</div></aside>
+  if (snapshot.role !== "coach") return denied("Dieser Bereich ist nur über den Beobachterlink erreichbar.");
+  const s=snapshot.state,report=snapshot.report,finished=snapshot.status==="completed";
+  const reportUrl=href("report",snapshot.id,tokenFor(current()));
+  const liveEvents=snapshot.events.slice(-4).reverse();
+  return \`<div class="control-page calm-control">
+    <div class="page-heading calm-page-heading">
+      <div><p class="eyebrow">HOTEL AURORA · \${safe(snapshot.id)}</p><h1>Control Room</h1><p>Verfolgen Sie die Arbeit live. Jeder Schritt bleibt nachvollziehbar.</p></div>
+      <div class="heading-controls">
+        \${tag(finished?"Abgeschlossen":"Live",finished?"connected":"live")}
+        <button class="secondary" data-action="copy-candidate">\${icon("link")} Kandidatenlink</button>
+      </div>
     </div>
-    ${report.multitask?multitaskControl(s,report.multitask,scoringReady):""}
-    <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><p class="eyebrow">C / TRANSPARENTE BEWERTUNG</p><h2>Kompetenzmatrix</h2></div><a class="inline-link" href="${href("report",snapshot.id,tokenFor(current()))}">Vollständiger Bericht ${icon("arrow")}</a></div>${scoringReady?`<div class="rubric-mini">${report.criteria.map(c=>`<div class="rubric-mini-row"><span>${safe(c.title)}</span><div class="mini-track"><i style="width:${c.points/2*100}%"></i></div><b>${c.points} / 2</b></div>`).join("")}</div>`:`<p class="fd-scoring-pending">Die Bewertung wird erst nach Abschluss der Aufgaben angezeigt. Die Live-Ereignisse sind bereits für die spätere manuelle Prüfung dokumentiert.</p>`}<p class="subtle-note">Illustrative Rubrik. Die fachliche Aussage ist noch nicht validiert.</p></section>
-      <section class="panel note-panel"><div class="panel-top"><div><p class="eyebrow">D / BEOBACHTER-PROTOKOLL</p><h2>Beobachtung notieren</h2></div></div><label class="field-label" for="observer-note">Nur konkrete Handlungen, keine Persönlichkeitsdiagnosen</label><textarea id="observer-note" placeholder="Zum Beispiel: Der Kandidat prüfte zunächst die Buchungsnummer ..." rows="3"></textarea><button class="secondary" data-action="note">Notiz mit Zeitstempel sichern ${icon("arrow")}</button></section></div>
-    <div class="bottom-cta"><div><p class="eyebrow accent">NEXT / EVIDENCE REPLAY</p><h2>Vom Score zurück zum Beleg.</h2></div><a class="primary" href="${href("report",snapshot.id,tokenFor(current()))}">Evidence Report öffnen ${icon("arrow")}</a></div>
-  </div>`;
+    <div class="calm-control-top">
+      <div class="calm-status-line"><span><i class="calm-live-dot"></i> \${finished?"Test beendet":"Test läuft"}</span><b>\${snapshot.events.length} Ereignisse</b><a href="\${reportUrl}">Bericht ansehen \${icon("arrow")}</a></div>
+      <section class="panel calm-observer-main">
+        <div class="panel-top"><div><p class="eyebrow">LIVE ÜBERSICHT</p><h2>Was passiert gerade?</h2></div></div>
+        \${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}
+        \${snapshot.mode==="multitask"&&s.opened?\`<details class="calm-details calm-observer-drawing" data-panel="live-drawing" \${openPanels.has("live-drawing")?"open":""}><summary>Markierungen auf der Rechnung ansehen <small>\${s.drawingCount} Linien</small></summary><div class="lab-observer-live-document">\${renderDrawingDocument(snapshot.events,false)}</div></details>\`:""}
+      </section>
+    </div>
+    <section class="calm-recent">
+      <div class="calm-section-header"><div><p class="eyebrow">EREIGNISSE</p><h2>Letzte Aktionen</h2></div><span>\${snapshot.events.length} gesamt</span></div>
+      \${liveEvents.length?\`<div class="calm-feed">\${liveEvents.map(e=>eventLine(e,true)).join("")}</div>\`:\`<p class="calm-empty">Noch keine Aktion. Öffnen Sie den Kandidatenlink auf einem zweiten Gerät.</p>\`}
+      <details class="calm-details" data-panel="control-all-events" \${openPanels.has("control-all-events")?"open":""}>
+        <summary>Alle Ereignisse anzeigen <small>\${snapshot.events.length}</small></summary>
+        <div class="event-list calm-expanded-feed">\${snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join("")}</div>
+      </details>
+    </section>
+    <div class="calm-control-next"><div><h2>\${finished?"Test abgeschlossen":"Bereit zur Auswertung?"}</h2><p>\${finished?"Der Bericht zeigt die Schritte und ihre Belege.":"Der Bericht ist jederzeit verfügbar; Bewertungen erst nach Abschluss."}</p></div><a class="primary" href="\${reportUrl}">Evidence Report \${icon("arrow")}</a></div>
+    <details class="calm-details calm-tools" data-panel="control-tools" \${openPanels.has("control-tools")?"open":""}>
+      <summary>Beobachternotiz und Bewertungsdetails <small>Optional</small></summary>
+      \${report.multitask?multitaskControl(s,report.multitask,finished):""}
+      <div class="control-lower"><section class="panel rubric-panel"><div class="panel-top"><div><h2>Bewertungsübersicht</h2></div></div>
+        \${finished?\`<div class="rubric-mini">\${report.criteria.map(c=>\`<div class="rubric-mini-row"><span>\${safe(c.title)}</span><div class="mini-track"><i style="width:\${c.points/2*100}%"></i></div><b>\${c.points} / 2</b></div>\`).join("")}</div>\`:'<p>Die Rubrik wird nach Abschluss angezeigt.</p>'}
+      </section><section class="panel note-panel"><div class="panel-top"><div><h2>Beobachtung notieren</h2></div></div>
+        <label class="field-label" for="observer-note">Konkrete Handlung dokumentieren</label><textarea id="observer-note" placeholder="Was haben Sie beobachtet?" rows="3"></textarea>
+        <button class="secondary" data-action="note">Notiz speichern</button>
+      </section></div>
+    </details>
+  </div>\`;
 }
 function reportView() {
   if (!snapshot) return loading();
