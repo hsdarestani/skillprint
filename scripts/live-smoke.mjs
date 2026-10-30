@@ -60,9 +60,9 @@ assert.equal(styleResponse.status, 200, "Stylesheet cannot be fetched");
 assert.match(styleResponse.headers.get("content-type") || "", /css/i, "Stylesheet URL returned a non-CSS MIME type");
 console.log("PASS: live Pages HTML, JavaScript and CSS assets all reachable", mainURL.pathname);
 const publishedStyle=await styleResponse.text();
-assert.ok(publishedStyle.includes(".lux-ambient") && publishedStyle.includes(".lux-orbit") && publishedStyle.includes("prefers-reduced-motion"),
- "STALE CLOUDFLARE PAGES: cinematic gradient/particle stylesheet not yet deployed.");
-console.log("PASS: published cinematic particles, gradient and reduced-motion CSS loaded");
+assert.ok(publishedStyle.includes(".skillprint-art") && publishedStyle.includes(".fd-cockpit") && publishedStyle.includes("prefers-reduced-motion"),
+ "STALE CLOUDFLARE PAGES: Graphite Studio stylesheet not yet deployed.");
+console.log("PASS: published Graphite Studio, workspace and reduced-motion CSS loaded");
 
 const hasMultitask = scriptBody.includes("Live Multitasking Demo starten");
 const hasOldButton = scriptBody.includes("Neue Demo-Sitzung starten");

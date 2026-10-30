@@ -228,6 +228,10 @@ function icon(name) {
     shield: '<path d="M12 2 4 5v6c0 5 3.5 8.5 8 11 4.5-2.5 8-6 8-11V5z"/><path d="m9 12 2 2 4-4"/>',
     radio: '<circle cx="12" cy="12" r="2"/><path d="M7 7a7 7 0 0 0 0 10m10-10a7 7 0 0 1 0 10M3 3a13 13 0 0 0 0 18M21 3a13 13 0 0 1 0 18"/>',
     file: '<path d="M6 2h8l5 5v15H6zM14 2v6h5M9 13h7M9 17h7"/>',
+    fingerprint: '<path d="M4 10a8 8 0 0 1 16 0v3M7 11a5 5 0 0 1 10 0v3c0 3-1 6-3 8M10 18c1-2 1-4 1-7a1 1 0 0 1 2 0c0 5-.3 8-2 11M4 14c0 3-.5 5-1 6M7 14c0 3-.5 6-2 8M20 17c-.3 2-1 4-2 5"/>',
+    guest: '<circle cx="12" cy="8" r="4"/><path d="M4 22v-2a8 8 0 0 1 16 0v2"/>',
+    phone: '<path d="m7 3 3 5-3 3a16 16 0 0 0 6 6l3-3 5 3-1 4C10 23 1 14 3 4z"/>',
+    hotel: '<path d="M5 22V3h14v19M2 22h20M9 7h1m4 0h1M9 11h1m4 0h1M10 22v-6h4v6"/>',
   };
   return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]||paths.sparkle}</svg>`;
 }
@@ -236,7 +240,7 @@ function header(r) {
   const report=active?.id&&active?.coachToken?href("report",active.id,active.coachToken):"#/dashboard";
   const candidate=r.view==="candidate";
   return `<header class="topbar calm-topbar">
-    <a class="brand" href="#/dashboard" aria-label="SKILLPRINT LIVE"><span class="brand-mark">S<span class="brand-star">✦</span></span><span class="brand-name"><b>SKILLPRINT</b><span>LIVE</span></span></a>
+    <a class="brand" href="#/dashboard" aria-label="SKILLPRINT LIVE"><span class="brand-mark">${icon("fingerprint")}</span><span class="brand-name"><b>skillprint</b><span>live</span></span></a>
     ${candidate?`<span class="calm-candidate-label">Hotel Aurora · Demo</span>`:`<nav aria-label="Hauptnavigation">
       <a href="#/dashboard" class="${r.view==="dashboard"?"active":""}">Start</a>
       <a href="${coach}" class="${r.view==="control"?"active":""}">Live</a>
@@ -251,33 +255,57 @@ function sidebar(r) {
   const report = active?.id && active?.coachToken ? href("report",active.id,active.coachToken) : "#/dashboard";
   return `<aside class="sidebar"><p class="eyebrow">WORKSPACE / 01</p><a class="nav-item ${selected==="dashboard"?"chosen":""}" href="#/dashboard"><span class="nav-glyph">◫</span> Übersicht</a><a class="nav-item ${selected==="control"?"chosen":""}" href="${coach}"><span class="nav-glyph">◉</span> Live Control Room</a><a class="nav-item ${selected==="report"?"chosen":""}" href="${report}"><span class="nav-glyph">▤</span> Evidence Report</a><div class="sidebar-bottom"><span class="tiny-orbit">✳</span><p>Evidence over intuition.</p><small>ENGINE / HOTEL V1.2</small></div></aside>`;
 }
-function footer() { return `<footer class="footer"><span>SKILLPRINT LIVE</span><span>Demo · Nur fiktive Daten</span></footer>`; }
+function footer() { return `<footer class="footer"><span>skillprint <b>live</b></span><span>Demo · Nur fiktive Daten</span><span>Entscheidungen bleiben menschlich.</span></footer>`; }
+function skillprintArt() {
+  // Vector contour artwork, not biometric input or a capability claim.
+  const ridges = Array.from({length:23},(_,i)=>{
+    const radius=32+i*7.9;
+    const points=Array.from({length:121},(_,j)=>{
+      const a=-.42+j/120*Math.PI*1.88;
+      const r=radius*(1+.075*Math.cos(3*a)+.04*Math.sin(2*a));
+      return `${j?"L":"M"}${(260+Math.cos(a)*r*.92+12*Math.sin(2*a)).toFixed(2)},${(268+Math.sin(a)*r*1.12).toFixed(2)}`;
+    }).join(" ");
+    return `<path d="${points}" opacity="${(.3+.7*i/22).toFixed(2)}"/>`;
+  }).join("");
+  return `<div class="skillprint-art" aria-hidden="true"><div class="art-halo"></div>
+    <svg class="contour-art" viewBox="0 0 520 560" fill="none"><defs><linearGradient id="contour-ink" x1="90" y1="40" x2="400" y2="515" gradientUnits="userSpaceOnUse"><stop stop-color="#9db9ef"/><stop offset=".43" stop-color="#3267cc"/><stop offset="1" stop-color="#a8b9d9"/></linearGradient></defs><g stroke="url(#contour-ink)" stroke-width="1.3" stroke-linecap="round" transform="rotate(-24 260 268)">${ridges}</g></svg>
+    <div class="art-caption"><span class="art-cross">+</span><span>Jedes Können<br><b>hinterlässt eine Spur.</b></span></div>
+    <span class="art-coordinate">SKILLPRINT / 01</span></div>`;
+}
 function dashboard() {
   const hasSession = Boolean(active?.id && active?.coachToken);
-  return `<div class="dashboard calm-dashboard lux-page lux-start">
-    <section class="calm-hero lux-hero">
-      <div class="lux-ambient" aria-hidden="true"></div>
-      <div class="calm-hero-content lux-hero-content">
-        <p class="eyebrow lux-kicker"><span class="lux-live-spark"></span> SKILLPRINT LIVE <span class="lux-kicker-divider">/</span> HOTEL AURORA</p>
-        <h1>Weniger reden.<br><em>Können sehen.</em></h1>
-        <p>Praktisch. Live. Nachvollziehbar.</p>
-        <button class="primary calm-primary lux-main-cta" data-action="create-advanced" aria-label="Live Multitasking Demo starten">Demo starten ${icon("arrow")}</button>
-        <div class="lux-hero-signature"><span>${icon("radio")} Live</span><span>${icon("sparkle")} AI</span><span>${icon("shield")} Evidence</span></div>
+  return `<div class="dashboard calm-dashboard" data-design="graphite-studio">
+    <section class="calm-hero">
+      <div class="calm-hero-content">
+        <p class="eyebrow hero-kicker"><span class="live-dot"></span> ARBEITSPROBEN. NEU GEDACHT.</p>
+        <h1>Können wird<br><em>sichtbar.</em></h1>
+        <p>Menschen zeigen, was sie können.<br>Sie sehen, wie sie handeln.</p>
+        <div class="hero-launch"><button class="primary calm-primary" data-action="create-advanced" aria-label="Live Multitasking Demo starten">${icon("play")} Demo starten</button><span>Hotel Aurora <i>·</i> Interaktive Arbeitsprobe</span></div>
       </div>
-      <div class="calm-hero-art lux-orbit" aria-hidden="true"><span class="lux-orbit-ring"></span><span class="lux-orbit-ring lux-orbit-ring-two"></span><div class="calm-hotel-symbol">H</div><span>HOTEL AURORA</span><i class="lux-orbit-spark lux-orbit-spark-a"></i><i class="lux-orbit-spark lux-orbit-spark-b"></i></div>
+      ${skillprintArt()}
     </section>
-    <section class="calm-how lux-journey" aria-label="So funktioniert die Demo">
-      <div class="calm-three lux-three">
-        <div><span class="lux-step-icon">${icon("play")}</span><h3>Starten</h3></div>
-        <div><span class="lux-step-icon">${icon("radio")}</span><h3>Beobachten</h3></div>
-        <div><span class="lux-step-icon">${icon("check")}</span><h3>Verstehen</h3></div>
+    <section class="scenario-preview" aria-labelledby="scenario-title">
+      <div class="scenario-intro"><span class="scenario-icon">${icon("hotel")}</span><div><p class="eyebrow">DIE DEMO</p><h2 id="scenario-title">Ein Empfang.<br>Viele Entscheidungen.</h2><p>Ein Gast. Eine Reklamation.<br>Und ein Anruf, der dazwischenkommt.</p></div><span class="scenario-number">01 / HOTEL & SERVICE</span></div>
+      <div class="scenario-desk" aria-label="Vorschau der Arbeitsprobe, keine laufende Sitzung">
+        <div class="preview-top"><span><i></i> FRONT DESK STUDIO</span><span>VORSCHAU</span></div>
+        <div class="preview-window"><span class="aurora-wordmark">AURORA</span><div class="preview-desk-line"></div></div>
+        <div class="preview-task preview-task-guest"><span class="preview-avatar">LW</span><div><b>Lena Weber</b><small>„Meine Rechnung stimmt nicht.“</small></div><span class="preview-status">Reklamation</span></div>
+        <div class="preview-task preview-task-phone"><span class="preview-phone">${icon("phone")}</span><div><b>Housekeeping</b><small>Zimmerstatus klären</small></div><span class="preview-waves"><i></i><i></i><i></i><i></i></span></div>
+        <div class="preview-bottom"><span>${icon("shield")} Fiktive Situation</span><span>${icon("radio")} Handlungen werden nachvollziehbar</span></div>
       </div>
     </section>
-    <details class="calm-details calm-dashboard-extra lux-extras" data-panel="dashboard-more" ${openPanels.has("dashboard-more")?"open":""}>
-      <summary>Mehr Optionen <span class="lux-summary-mark">+</span></summary>
-      <div class="lux-extra-items">
-        ${hasSession?`<a class="lux-extra-link" href="${href("control",active.id,active.coachToken)}">${icon("arrow")} Letzte Demo öffnen</a><button class="lux-extra-link" data-action="copy-candidate">${icon("link")} Kandidatenlink kopieren</button>`:""}
-        <button class="lux-extra-link" data-action="create">${icon("play")} Einfache Demo</button>
+    <section class="calm-how" aria-label="So funktioniert die Demo">
+      <div class="calm-three">
+        <div><span class="journey-number">01</span><div><h3>Erleben.</h3><p>Eine echte Arbeitssituation.<br>Als interaktive Simulation.</p></div></div>
+        <div><span class="journey-number">02</span><div><h3>Beobachten.</h3><p>Jede Handlung live.<br>Jeder Schritt nachvollziehbar.</p></div></div>
+        <div><span class="journey-number">03</span><div><h3>Verstehen.</h3><p>Konkrete Belege.<br>Eine menschliche Entscheidung.</p></div></div>
+      </div>
+    </section>
+    <details class="calm-details calm-dashboard-extra" data-panel="dashboard-more" ${openPanels.has("dashboard-more")?"open":""}>
+      <summary>Mehr Optionen</summary>
+      <div class="extra-items">
+        ${hasSession?`<a class="extra-link" href="${href("control",active.id,active.coachToken)}">${icon("arrow")} Letzte Demo öffnen</a><button class="extra-link" data-action="copy-candidate">${icon("link")} Kandidatenlink kopieren</button>`:""}
+        <button class="extra-link" data-action="create">${icon("play")} Einfache Demo</button>
       </div>
       <p class="calm-disclaimer">Nur fiktive Daten · Keine automatische Einstellungsentscheidung.</p>
     </details>
@@ -367,17 +395,18 @@ function control() {
   if (snapshot.role !== "coach") return denied("Dieser Bereich ist nur über den Beobachterlink erreichbar.");
   const s=snapshot.state,report=snapshot.report,finished=snapshot.status==="completed";
   const reportUrl=href("report",snapshot.id,tokenFor(current()));
+  const candidateUrl=active?.id===snapshot.id&&active?.candidateToken?href("candidate",snapshot.id,active.candidateToken):null;
   const liveEvents=snapshot.events.slice(-4).reverse();
   return `<div class="control-page calm-control">
     <div class="page-heading calm-page-heading">
       <div><p class="eyebrow">HOTEL AURORA · ${safe(snapshot.id)}</p><h1>Control Room</h1><p>Alles im Blick.</p></div>
       <div class="heading-controls">
         ${tag(finished?"Abgeschlossen":"Live",finished?"connected":"live")}
-        <button class="lux-icon-button" data-action="copy-candidate" title="Kandidatenlink kopieren" aria-label="Kandidatenlink kopieren">${icon("link")}</button>
+        <button class="icon-button" data-action="copy-candidate" title="Kandidatenlink kopieren" aria-label="Kandidatenlink kopieren">${icon("link")}</button>
       </div>
     </div>
-    <div class="calm-control-top lux-control-top"><div class="lux-ambient" aria-hidden="true"></div>
-      <div class="calm-status-line lux-control-status"><span><i class="calm-live-dot"></i> ${finished?"Abgeschlossen":"Live"}</span><b>${snapshot.events.length} Events</b></div>
+    <div class="calm-control-top control-surface">
+      <div class="calm-status-line control-status"><span><i class="calm-live-dot"></i> ${finished?"Abgeschlossen":"Live"}</span><b>${snapshot.events.length} Events</b></div>
       <section class="panel calm-observer-main">
         <div class="panel-top"><div><p class="eyebrow">LIVE DESK</p><h2>Hotel Aurora</h2></div></div>
         ${snapshot.mode==="multitask"?renderStudioObserver(snapshot,{safe,fmt}):mirror(s)}
@@ -386,13 +415,13 @@ function control() {
     </div>
     <section class="calm-recent">
       <div class="calm-section-header"><div><h2>Aktivität</h2></div><span>${snapshot.events.length} Events</span></div>
-      ${liveEvents.length?`<div class="calm-feed">${liveEvents.map(e=>eventLine(e,true)).join("")}</div>`:`<p class="calm-empty">Noch keine Aktion · Kandidatenlink öffnen.</p>`}
+      ${liveEvents.length?`<div class="calm-feed">${liveEvents.map(e=>eventLine(e,true)).join("")}</div>`:`<div class="calm-empty"><h3>Bereit für die Arbeitsprobe.</h3><p>Die Handlungen aus der Kandidatenansicht erscheinen hier live.</p>${candidateUrl?`<a class="outline" href="${candidateUrl}" target="_blank" rel="noopener">Arbeitsprobe öffnen ${icon("arrow")}</a>`:'<p>Öffnen Sie den Kandidatenlink auf dem zweiten Gerät.</p>'}</div>`}
       <details class="calm-details" data-panel="control-all-events" ${openPanels.has("control-all-events")?"open":""}>
         <summary>${icon("clock")} Verlauf <small>${snapshot.events.length}</small></summary>
         <div class="event-list calm-expanded-feed">${snapshot.events.slice().reverse().map(e=>eventLine(e,true)).join("")}</div>
       </details>
     </section>
-    <div class="calm-control-next lux-next"><div><span class="lux-next-symbol">${icon("file")}</span><h2>Evidence Report</h2></div><a class="primary lux-report-cta" href="${reportUrl}">Ansehen ${icon("arrow")}</a></div>
+    <div class="calm-control-next report-next"><div><span class="next-symbol">${icon("file")}</span><h2>Evidence Report</h2></div><a class="primary report-cta" href="${reportUrl}">Ansehen ${icon("arrow")}</a></div>
     <details class="calm-details calm-tools" data-panel="control-tools" ${openPanels.has("control-tools")?"open":""}>
       <summary>${icon("sparkle")} Werkzeuge <small>Optional</small></summary>
       ${report.multitask?multitaskControl(s,report.multitask,finished):""}
@@ -413,8 +442,8 @@ function reportView() {
   return `<div class="report-page calm-report">
     <div class="page-heading calm-page-heading">
       <div><p class="eyebrow">HOTEL FRONT OFFICE · ${safe(snapshot.id)}</p><h1>Evidence Report</h1><p>Jede Entscheidung. Ein Beleg.</p></div>
-      <div class="heading-controls"><button class="lux-icon-button" data-action="print" title="Als PDF drucken" aria-label="Als PDF drucken">${icon("file")}</button>
-        <button class="secondary lux-approval-button" data-action="approve" ${!finished||snapshot.reviewStatus==="approved"?"disabled":""}>${icon("check")} ${snapshot.reviewStatus==="approved"?"Geprüft":"Prüfung bestätigen"}</button></div>
+      <div class="heading-controls"><button class="icon-button" data-action="print" title="Als PDF drucken" aria-label="Als PDF drucken">${icon("file")}</button>
+        <button class="secondary approval-button" data-action="approve" ${!finished||snapshot.reviewStatus==="approved"?"disabled":""}>${icon("check")} ${snapshot.reviewStatus==="approved"?"Geprüft":"Prüfung bestätigen"}</button></div>
     </div>
     <section class="calm-report-summary">
       <div><span>STATUS</span><strong>${snapshot.reviewStatus==="approved"?"Menschlich geprüft":finished?"Bereit zur Prüfung":"Test läuft"}</strong></div>
