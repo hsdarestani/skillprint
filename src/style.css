@@ -1,6 +1,6 @@
 /* SKILLPRINT · Graphite Studio
    One visual system: warm paper, graphite, signal blue. No external assets. */
-@font-face{font-family:Inter;src:url("/fonts/inter-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:Inter;src:url("./assets/inter-latin.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
 :root{
   color-scheme:light;
   --bg:#f6f6f3;--surface:#fff;--surface2:#f1f2f3;
