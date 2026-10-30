@@ -11,7 +11,7 @@ export function renderServiceChat(events,channel,locale,safe,finished=false,busy
   const field="service-chat-"+channel;
   const options=[["de","Deutsch"],["tr","Türkçe"],["en","English"]].map(([id,label])=>`<option value="${id}" ${lang===id?"selected":""}>${label}</option>`).join("");
   return `<section class="fd-service-chat" aria-label="${name} Gespräch">
-    <header class="fd-service-chat-top"><div><span class="fd-service-chat-dot"></span><b>${name}</b><small>LIVE ROLEPLAY · ${counts.questions}/6</small></div>
+    <header class="fd-service-chat-top"><div><span class="fd-service-chat-dot"></span><b>${name}</b><small>KI-SIMULATION · ${counts.questions}/6</small></div>
       <select id="service-locale" aria-label="Gesprächssprache">${options}</select></header>
     <div class="fd-service-messages" role="log" aria-label="${name} Gesprächsverlauf" aria-live="polite">
       ${[{actor:"service",payload:{text:SERVICE_OPENING[channel][lang],source:"scripted"}},...rows].map(e=>{
@@ -22,7 +22,7 @@ export function renderServiceChat(events,channel,locale,safe,finished=false,busy
     </div>
     <div class="fd-service-compose"><label for="${field}">Was sagen Sie ${channel==="phone"?"am Telefon":"zum Gast"}?</label>
       <textarea id="${field}" rows="3" maxlength="500" placeholder="${channel==="arrival"?"Guten Tag Frau Demir, ich prüfe Ihre Reservierung ...":"Guten Morgen, können Sie den aktuellen Zimmerstatus bestätigen?"}" ${disabled?"disabled":""}></textarea>
-      <div class="fd-service-send"><span>Frei formulieren · keine automatische Eignungsbewertung</span>
+      <div class="fd-service-send"><span>Nachricht schreiben</span>
         <button class="secondary" data-action="service-chat" data-channel="${channel}" ${disabled?"disabled":""}>Antwort senden →</button></div>
     </div>
   </section>`;
